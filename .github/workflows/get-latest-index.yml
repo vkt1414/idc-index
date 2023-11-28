@@ -52,8 +52,8 @@ jobs:
         body: ${{ steps.update_index_version.outputs.pull_request_body }}
         branch: update-index # The branch where you commit
         base: auto-release-emphasizing-reusable-actions
-        add-paths: |
-          queries/*.sql
-          idc_index/index.py
+        # add-paths: |
+        #   queries/*.sql
+        #   idc_index/index.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
