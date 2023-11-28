@@ -92,4 +92,4 @@ if current_index_version < latest_idc_release_version:
     os.environ['release_body'] = release_body
     os.environ['pull_request_body'] = f'Update queries to v{latest_idc_release_version}'        
 else:
-    os.environ['create_release'] = str(False)            
+    os.environ['create_release'] = str(False)
