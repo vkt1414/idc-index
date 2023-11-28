@@ -37,7 +37,7 @@ jobs:
     - name: Create Release
       id: create_release
       uses: marvinpinto/action-automatic-releases@latest
-      if: ${{ steps.set_version.outputs.create_release }}
+      if: ${{ steps.set_version.outputs.create_release }} == 'True'
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         automatic_release_tag: latest
@@ -48,7 +48,7 @@ jobs:
 
     # - name: Upload Release Asset
     #   uses: actions/upload-release-asset@v1
-    #   if: ${{ steps.set_version.outputs.create_release }}      
+    #   if: ${{ steps.set_version.outputs.create_release }}  == 'True'    
     #   with:
     #     upload_url: ${{  steps.create_release.outputs.upload_url }}
     #     asset_path: queries/*.csv.zip
