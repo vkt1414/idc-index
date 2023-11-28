@@ -51,7 +51,7 @@ jobs:
         title: Update to v${{ steps.update_index_version.outputs.latest_idc_release_version }}
         body: ${{ steps.update_index_version.outputs.pull_request_body }}
         branch: ${{ github.ref }} # The branch where you commit
-        base: auto-release-emphasizing-reusable-actions
+        base: main
         add-paths: |
           queries/*.sql
           idc_index/index.py
