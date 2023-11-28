@@ -18,7 +18,7 @@ jobs:
         python-version: 3.11
 
     - name: Install dependencies
-      run: pip install requests==2.31.0 pandas==2.1.1 google-cloud-bigquery==3.12.0 pyarrow==13.0.0  db-dtypes==1.1.1 PyGithub==2.1.1
+      run: pip install requests==2.31.0 pandas==2.1.1 google-cloud-bigquery==3.12.0 pyarrow==13.0.0 db-dtypes==1.1.1 PyGithub==2.1.1
     
     - name: Authorize Google Cloud
       uses: google-github-actions/auth@v1
@@ -28,7 +28,44 @@ jobs:
         export_environment_variables: true    
   
     - name: Run script to get the latest idc release
+      id: set_version
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python .github/get-latest-index.py
+
+    - name: Create Release
+      id: create_release
+      uses: marvinpinto/action-automatic-releases@latest
+      if: ${{ steps.set_version.outputs.create_release }}
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        automatic_release_tag: latest
+        prerelease: true
+        files: |
+          *.zip
+
+
+    # - name: Upload Release Asset
+    #   uses: actions/upload-release-asset@v1
+    #   if: ${{ steps.set_version.outputs.create_release }}      
+    #   with:
+    #     upload_url: ${{  steps.create_release.outputs.upload_url }}
+    #     asset_path: queries/*.csv.zip
+    #     asset_name: ${{ env.ASSET_NAME }}
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # - name: Create Pull Request
+    #   uses: peter-evans/create-pull-request@v5
+    #   with:
+    #     title: Update to v${{ steps.set_version.outputs.latest_idc_release_version }}
+    #     body: ${{ steps.set_version.outputs.pull_request_body }}
+    #     labels: "automated"
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    #     # outputs:
+    #     #   idc_release_version: ${{ steps.set_version.outputs.latest_idc_release_version }}
+    #     #   release_body: ${{ steps.set_version.outputs.release_body }}
+    #     #   pull_request_body: ${{ steps.set_version.outputs.pull_request_body }}
