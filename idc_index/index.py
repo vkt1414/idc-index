@@ -76,7 +76,7 @@ class IDCClient:
         return result_df
 
     def get_idc_version(self):
-        return "v16";
+        return "v15";
     
     def get_collections(self):
         unique_collections = self.index['collection_id'].unique()
