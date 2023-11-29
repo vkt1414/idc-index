@@ -3,11 +3,19 @@ import re
 import requests
 import sys
 from google.cloud import bigquery
+<<<<<<< HEAD
+=======
+from github import Github
+>>>>>>> eb2ce49d5d18153b267f6b0463ea2006faa48a9c
 
 # Set up BigQuery client
 project_id = "idc-external-025"
 client = bigquery.Client(project=project_id)
+<<<<<<< HEAD
 
+=======
+owner='ImagingDataCommons'
+>>>>>>> eb2ce49d5d18153b267f6b0463ea2006faa48a9c
 
 def extract_index_version(file_path):
     with open(file_path, "r") as file:
@@ -29,14 +37,18 @@ def execute_sql_query(sql_query):
     df = client.query(sql_query).to_dataframe()
     return df
 
+<<<<<<< HEAD
 def create_csv_zip_from_query(query, csv_file_name):
     df = execute_sql_query(query)
     df.to_csv(csv_file_name, compression='gzip', escapechar="\\")
 
+=======
+>>>>>>> eb2ce49d5d18153b267f6b0463ea2006faa48a9c
 def update_sql_query(file_path, current_index_version, latest_idc_release_version):
     with open(file_path, "r") as file:
         sql_query = file.read()
 
+<<<<<<< HEAD
     modified_sql_query = sql_query.replace(
         f"idc_v{current_index_version}", f"idc_v{latest_idc_release_version}"
     )
@@ -48,6 +60,23 @@ def update_sql_query(file_path, current_index_version, latest_idc_release_versio
     create_csv_zip_from_query(modified_sql_query,csv_file_name)
 
     return modified_sql_query,csv_file_name
+=======
+    if current_index_version < latest_idc_release_version:
+        modified_sql_query = sql_query.replace(
+            f"idc_v{current_index_version}", f"idc_v{latest_idc_release_version}"
+        )
+
+        df = execute_sql_query(modified_sql_query)
+        csv_file_name = f"{os.path.basename(file_path).split('.')[0]}.csv.zip"
+        df.to_csv(csv_file_name, compression='gzip', escapechar="\\")
+
+        with open(file_path, "w") as file:
+            file.write(modified_sql_query)
+    else:
+        raise ValueError('Current version is not less than the latest version')
+
+    return modified_sql_query, csv_file_name
+>>>>>>> eb2ce49d5d18153b267f6b0463ea2006faa48a9c
 
 # Get latest IDC release version
 view_id = "bigquery-public-data.idc_current.dicom_all_view"
@@ -56,6 +85,18 @@ latest_idc_release_version = int(re.search(r"idc_v(\d+)", view.view_query).group
 
 current_index_version = extract_index_version('idc_index/index.py')
 
+<<<<<<< HEAD
+=======
+# Initialize the release body with information about the latest IDC release
+release_body = (
+    "Found newer IDC release with version "
+    + str(latest_idc_release_version)
+    + ".\n"
+)
+
+# List to store information for release creation
+release_info_list = []
+>>>>>>> eb2ce49d5d18153b267f6b0463ea2006faa48a9c
 if current_index_version < latest_idc_release_version:
     # Update the index.py file with the latest IDC release version
     update_index_version('idc_index/index.py', latest_idc_release_version)
@@ -66,8 +107,28 @@ if current_index_version < latest_idc_release_version:
 
             modified_sql_query, csv_file_name = update_sql_query(file_path, current_index_version, latest_idc_release_version)
 
+<<<<<<< HEAD
     os.environ['create_release'] = str(True)         
     os.environ['current_index_version'] = str(current_index_version)
     os.environ['pull_request_body'] = f'Update queries to v{latest_idc_release_version}'        
 else:
     os.environ['create_release'] = str(False)
+=======
+            # Append information for each query to the release body
+            release_body += (
+                "\nUpdating the index from idc_v"
+                + str(current_index_version)
+                + " to idc_v"
+                + str(latest_idc_release_version)
+                + "\nThe sql query used for generating the new csv index is \n```\n"
+                + modified_sql_query
+                + "\n```"
+            )
+            release_info_list.append((csv_file_name,))
+    os.environ['create_release'] = True          
+    os.environ['current_index_version'] = current_index_version
+    os.environ['release_body'] = release_body
+    os.environ['pull_request_body'] = f'Update queries to v{latest_idc_release_version}'        
+else:
+    os.environ['create_release'] = False            
+>>>>>>> eb2ce49d5d18153b267f6b0463ea2006faa48a9c
