@@ -46,6 +46,7 @@ jobs:
       with:
         tag_name: latest
         prerelease: true
+        generate_release_notes: false
         files: |
           *.zip
 
