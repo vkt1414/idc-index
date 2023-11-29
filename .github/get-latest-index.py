@@ -5,7 +5,7 @@ import sys
 from google.cloud import bigquery
 
 # Set up BigQuery client
-project_id = "idc-external-025"
+project_id = "vamsithiriveedhi"
 client = bigquery.Client(project=project_id)
 
 
