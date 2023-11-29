@@ -37,18 +37,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python .github/get-latest-index.py
-
-    - name: Create Release
-      id: create_release
-      uses: marvinpinto/action-automatic-releases@latest
-      if: ${{ steps.update_index_version.outputs.create_release }} == 'True' && github.event_name != 'pull_request'
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: latest
-        prerelease: true
-        files: |
-          *.zip
-
+    
     - name: Create Tagged Release
       id: create_tagged_release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -56,6 +45,17 @@ jobs:
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: false
+        files: |
+          *.zip
+  
+    - name: Create latest Release
+      id: create_release
+      uses: marvinpinto/action-automatic-releases@latest
+      if: ${{ steps.update_index_version.outputs.create_release }} == 'True' && github.event_name != 'pull_request'
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        automatic_release_tag: latest
+        prerelease: true
         files: |
           *.zip
 
