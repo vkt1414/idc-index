@@ -41,8 +41,8 @@ jobs:
       with:
         tag: latest
         prerelease: true
-        omitBody: true
         makeLatest: true
+        allowUpdates: true
         body: 'Latest idc-index'
         artifacts: "*.zip"
 
