@@ -162,9 +162,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-gcp service account keys
-gha-creds-*.json
-
 
 #gcp credentials
 gha-creds-*.json
