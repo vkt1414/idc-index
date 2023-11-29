@@ -1,4 +1,4 @@
-name: Check idc releases and update index accordingly
+name: idc-index release manager
 on:
   workflow_dispatch:
   push:
