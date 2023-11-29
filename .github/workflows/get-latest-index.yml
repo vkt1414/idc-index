@@ -43,7 +43,7 @@ jobs:
         prerelease: true
         omitBody: true
         makeLatest: true
-        body: ''
+        body: 'Latest idc-index'
         artifacts: "*.zip"
 
     - name: Create Pull Request
