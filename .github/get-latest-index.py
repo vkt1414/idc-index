@@ -2,6 +2,7 @@ import os
 import re
 import requests
 import sys
+import uuid
 from google.cloud import bigquery
 
 # Set up BigQuery client
@@ -56,6 +57,13 @@ def update_sql_query(file_path, current_index_version, latest_idc_release_versio
 
     return modified_sql_query,csv_file_name
 
+def set_multiline_output(name, value):
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+        delimiter = uuid.uuid1()
+        print(f'{name}<<{delimiter}', file=fh)
+        print(value, file=fh)
+        print(delimiter, file=fh)
+
 # Get latest IDC release version
 view_id = "bigquery-public-data.idc_current.dicom_all_view"
 view = client.get_table(view_id)
@@ -73,8 +81,7 @@ if current_index_version < latest_idc_release_version:
 
             modified_sql_query, csv_file_name = update_sql_query(file_path, current_index_version, latest_idc_release_version)
 
-    os.environ['create_release'] = str(True)         
-    os.environ['current_index_version'] = str(current_index_version)
-    os.environ['pull_request_body'] = f'Update queries to v{latest_idc_release_version}'        
+    set_multiline_output('create_release', 'True')
+    set_multiline_output('current_index_version', str(current_index_version))             
 else:
-    os.environ['create_release'] = str(False)
+    set_multiline_output('create_release', 'False')
