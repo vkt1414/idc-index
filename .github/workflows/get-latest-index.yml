@@ -48,8 +48,9 @@ jobs:
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
       with:
-        title: Update to v${{ steps.update_index_version.outputs.latest_idc_release_version }}
+        title: Update sql queries and/or index.py to v${{ steps.update_index_version.outputs.latest_idc_release_version }}
         body: ${{ steps.update_index_version.outputs.pull_request_body }}
+        branch: update-sql-queries-and-or-index
         add-paths: |
           queries/*.sql
           idc_index/index.py
