@@ -82,6 +82,6 @@ if current_index_version < latest_idc_release_version:
             modified_sql_query, csv_file_name = update_sql_query(file_path, current_index_version, latest_idc_release_version)
 
     set_multiline_output('create_release', 'True')
-    set_multiline_output('current_index_version', str(current_index_version))             
+    set_multiline_output('latest_idc_release_version', str(latest_idc_release_version))             
 else:
     set_multiline_output('create_release', 'False')
