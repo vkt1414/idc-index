@@ -34,11 +34,6 @@ jobs:
       run: |
         python .github/get-latest-index.py
 
-    - name: echo outputs
-      run: |
-        echo ${{ steps.update_index_version.outputs.create_release }}
-        echo ${{ steps.update_index_version.outputs.latest_idc_release_version }} 
-  
     - name: Create latest Release
       id: create_release
       if: (${{ steps.update_index_version.outputs.create_release }} == 'True') && (github.event_name != 'pull_request')
@@ -47,6 +42,7 @@ jobs:
         tag_name: latest
         prerelease: true
         generate_release_notes: false
+        body: ''
         files: |
           *.zip
 
