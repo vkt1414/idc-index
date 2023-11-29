@@ -33,7 +33,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python .github/get-latest-index.py
-        git status
+        cat idc_index/index.py
 
     - name: Create Release
       id: create_release

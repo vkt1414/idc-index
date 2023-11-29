@@ -16,14 +16,21 @@ def extract_index_version(file_path):
                 return int(re.findall(r"v(\d+)", next(file))[0])
 
 def update_index_version(file_path, latest_idc_release_version):
+    # Open the file in read mode and read all lines
     with open(file_path, "r") as file:
         lines = file.readlines()
 
+    # Open the file in write mode
     with open(file_path, "w") as file:
-        for line in lines:
-            if "def get_idc_version(self):" in line:
-                line = re.sub(r"v(\d+)", f"v{latest_idc_release_version}", line)
-            file.write(line)
+        # Iterate over each line
+        for i in range(len(lines)):
+            # If the line contains the string "def get_idc_version(self):"
+            if "def get_idc_version(self):" in lines[i]:
+                # Replace the version number in the next line
+                lines[i+1] = re.sub(r"v(\d+)", f"v{latest_idc_release_version}", lines[i+1])
+            # Write the line to the file
+            file.write(lines[i])
+
 
 def execute_sql_query(sql_query):
     df = client.query(sql_query).to_dataframe()
