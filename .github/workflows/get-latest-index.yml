@@ -42,7 +42,8 @@ jobs:
     
     - name: Create Tagged Release
       id: create_tagged_release
-      if: ${{ steps.update_index_version.outputs.create_release }} == 'True' && startsWith(github.ref, 'refs/tags/v') && github.event_name != 'pull_request'
+      #if: ${{ steps.update_index_version.outputs.create_release }} == 'True' && startsWith(github.ref, 'refs/tags/v') && github.event_name != 'pull_request'
+      if: github.event_name != 'push'
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
