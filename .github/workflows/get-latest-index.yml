@@ -37,14 +37,14 @@ jobs:
     - name: Create latest Release
       id: create_release
       if: (${{ steps.update_index_version.outputs.create_release }} == 'True') && (github.event_name != 'pull_request')
-      uses: softprops/action-gh-release@v1
+      uses: ncipollo/release-action@v1
       with:
-        tag_name: latest
+        tag: latest
         prerelease: true
-        generate_release_notes: false
+        omitBody: true
+        makeLatest: true
         body: ''
-        files: |
-          *.zip
+        artifacts: "*.zip"
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
