@@ -70,9 +70,9 @@ jobs:
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} 
     
     - name: Download latest index
-      if: steps.check_changes.outputs.doc_any_changed == 'false'
+      if: steps.check_changes.outputs.doc_any_changed == 'false' || startsWith(github.ref, 'refs/tags/v')
       run:
-        wget https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
+        wget -q https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
       shell: bash
 
     - name: Lint with flake8
@@ -110,12 +110,11 @@ jobs:
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         automatic_release_tag: "latest"
-        generate_notes: false
+        #generate_notes: false
         prerelease: true
         title: "Latest idc-index"
-        body: ""
-        files: |
-           "*.zip"
+          files: |
+            *.zip
 
     - name: Get version
       uses: mtkennerly/dunamai-action@v1
