@@ -83,7 +83,7 @@ jobs:
     - run: |
         ls -R
         pwd
-
+    - uses: actions/download-artifact@v3
     - run: |  
         import pandas as pd 
         pd.read_csv('idc_index.csv.zip', dtype=str, encoding='utf-8')
