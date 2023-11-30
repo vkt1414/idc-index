@@ -81,19 +81,17 @@ jobs:
       shell: bash       
 
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
-      if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event != 'pull_request'
-      shell: python
+      if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name != 'pull_request'
       run: |
-        with open('index.py', 'r') as file:
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        with open('idc_index/index.py', 'r') as file:
             filedata = file.read()
-
-        # Replace the target string
-        filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', 'idc-index.csv.zip')
-
-        # Write the file out again
-        with open('index.py', 'w') as file:
+        filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(current_dir, '..', 'idc_index.csv.zip'))
+        with open('idc_index/index.py', 'w') as file:
             file.write(filedata)
-      
+      shell: python
+        
     - name: Test package
       run: |
         python -m unittest -vv tests/idcindex.py
