@@ -1,9 +1,7 @@
 name: commit-pr-idc-index-release-manager
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*.*.*'     
+  push: 
   pull_request:    
   schedule:
     - cron: 0 12 */1 * *
