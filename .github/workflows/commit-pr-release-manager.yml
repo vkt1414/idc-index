@@ -46,7 +46,6 @@ jobs:
             doc:
               - queries/**
 
-          
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
       if: steps.check_changes.outputs.doc_any_changed == 'true' 
@@ -75,7 +74,7 @@ jobs:
         artifacts: "*.zip"
   
     - name: Update latest tag's source code
-      if: (github.event_name != 'pull_request' && steps.check_changes.outputs.doc_any_changed == 'true')
+      if: (github.event_name != 'pull_request')
       uses: richardsimko/update-tag@v1
       with:
         tag_name: latest
@@ -84,7 +83,7 @@ jobs:
 
     - name: Create latest Release
       id: create_latest_release
-      if: (github.event_name != 'pull_request' && steps.check_changes.outputs.doc_any_changed == 'true')
+      if: (github.event_name != 'pull_request')
       uses: ncipollo/release-action@v1
       with:
         tag: latest
