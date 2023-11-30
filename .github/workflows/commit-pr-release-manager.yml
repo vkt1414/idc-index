@@ -3,9 +3,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*.*.*'
-    # branches:
-    #   - '**'      
+      - 'v*.*.*'     
   pull_request:    
   schedule:
     - cron: 0 12 */1 * *
@@ -80,6 +78,7 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         tag: latest
+        removeArtifacts: true
         prerelease: true
         makeLatest: true
         allowUpdates: true
