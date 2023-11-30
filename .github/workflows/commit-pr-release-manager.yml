@@ -48,7 +48,7 @@ jobs:
 
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
-      #if: (steps.check_changes.outputs.doc_any_changed == 'true' || startsWith(github.ref, 'refs/tags/v'))
+      if: steps.check_changes.outputs.doc_any_changed == 'true'
       shell: python
       run: |
         import sys
@@ -63,6 +63,32 @@ jobs:
         manager.run_queries_folder("queries/")
       env: 
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} 
+    
+    - name: Download latest index
+      if: steps.check_changes.outputs.doc_any_changed == 'false'
+      run:
+        wget https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
+      shell: bash
+
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings.
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Setup testing
+      run: |
+        !wget "https://github.com/peak/s5cmd/releases/download/v2.2.2/s5cmd_2.2.2_Linux-64bit.tar.gz"\
+          && tar -xvzf "s5cmd_2.2.2_Linux-64bit.tar.gz"\
+          && rm "s5cmd_2.2.2_Linux-64bit.tar.gz"\
+          && mv s5cmd /usr/local/bin/s5cmd
+      shell: bash        
+        
+    - name: Test package
+      run: |
+        python -m unittest -vv tests/idcindex.py
+      shell: python
 
     - name: Create Tagged Release
       id: create_tagged_release
@@ -94,25 +120,16 @@ jobs:
         body: 'Latest idc-index'
         artifacts: "*.zip"
 
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings.
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-  
-    - name: Build a source tarball
-      run: python setup.py sdist 
-
     - name: Get version
       uses: mtkennerly/dunamai-action@v1
       with:
-        env-var: MY_VERSION
+        env-var: idc_index_version
         args: --style semver
-    - run: echo $MY_VERSION
+    - run: echo $idc_index_version
 
+    - name: Build a source tarball
+      run: python setup.py sdist 
 
     # - name: Publish distribution to PyPI
-    #   if: (github.event_name != 'pull_request')
+    #   if: startsWith(github.ref, 'refs/tags/v')
     #   uses: pypa/gh-action-pypi-publish@release/v1
-     
