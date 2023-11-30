@@ -19,6 +19,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -35,20 +37,19 @@ jobs:
         create_credentials_file: true
         export_environment_variables: true    
 
-    - name: Check if queries folder is modified    
+    - name: Check paths changed in the latest commit   
       id: check_changes
-      uses: jitterbit/get-changed-files@v1    
-    - run: |
-        for changed_file in ${{ steps.check_changes.outputs.all }}; do
-          if [[ $changed_file == queries/* ]]; then
-            echo "modified=true" >> $GITHUB_ENV
-            break
-          fi
-        done
+      uses: tj-actions/changed-files@v40
+      with:
+        since_last_remote_commit: true  
+        files_yaml: |
+            doc:
+              - queries/**
+
           
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
-      if: env.modified != 'false'
+      if: steps.check_changes.outputs.doc_any_changed == 'true' 
       shell: python
       run: |
         import sys
@@ -74,7 +75,7 @@ jobs:
         artifacts: "*.zip"
   
     - name: Update latest tag's source code
-      if: (github.event_name != 'pull_request') && (env.modified != 'false')
+      if: (github.event_name != 'pull_request' && steps.check_changes.outputs.doc_any_changed == 'true')
       uses: richardsimko/update-tag@v1
       with:
         tag_name: latest
@@ -83,7 +84,7 @@ jobs:
 
     - name: Create latest Release
       id: create_latest_release
-      if: (github.event_name != 'pull_request') && (env.modified != 'false')
+      if: (github.event_name != 'pull_request' && steps.check_changes.outputs.doc_any_changed == 'true')
       uses: ncipollo/release-action@v1
       with:
         tag: latest
