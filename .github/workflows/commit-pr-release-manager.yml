@@ -84,18 +84,22 @@ jobs:
         ls -R
         pwd
 
-    # - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
-    #   if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name == 'pull_request'
-    #   run: |
-    #     import os
-    #     from pathlib import Path
-    #     home_dir = str(Path.home())
-    #     with open('idc_index/index.py', 'r') as file:
-    #         filedata = file.read()
-    #         filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'work/idc-index/idc-index/idc_index.csv.zip'))    
-    #     with open('idc_index/index.py', 'w') as file:
-    #       file.write(filedata)
-    #   shell: python
+    - uses: actions/download-artifact@v3
+      with:
+        name: idc_index.csv.zip
+
+    - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
+      if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name == 'pull_request'
+      run: |
+        import os
+        from pathlib import Path
+        home_dir = str(Path.home())
+        with open('idc_index/index.py', 'r') as file:
+            filedata = file.read()
+            filedata = filedata.replace('https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'work/idc-index/idc-index/idc_index.csv.zip'))    
+        with open('idc_index/index.py', 'w') as file:
+          file.write(filedata)
+      shell: python
         
     - name: Test package
       run: |
