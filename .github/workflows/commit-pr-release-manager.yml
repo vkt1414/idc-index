@@ -20,7 +20,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 2
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -103,6 +103,13 @@ jobs:
   
     - name: Build a source tarball
       run: python setup.py sdist 
+
+    - name: Get version
+      uses: mtkennerly/dunamai-action@v1
+      with:
+        env-var: MY_VERSION
+        args: --style semver
+    - run: echo $MY_VERSION
 
     # - name: Publish distribution to PyPI
     #   if: (github.event_name != 'pull_request')
