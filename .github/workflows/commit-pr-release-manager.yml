@@ -72,7 +72,7 @@ jobs:
     - name: Download latest index
       if: steps.check_changes.outputs.doc_any_changed == 'false'
       run:
-        wget -q https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
+        wget https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
       shell: bash
 
     - name: Lint with flake8
