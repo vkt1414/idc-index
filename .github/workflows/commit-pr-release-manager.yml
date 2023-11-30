@@ -109,7 +109,7 @@ jobs:
       uses: crowbarmaster/GH-Automatic-Releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: latest
+        automatic_release_tag: "latest"
         generate_notes: false
         prerelease: true
         title: "Latest idc-index"
