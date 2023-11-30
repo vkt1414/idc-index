@@ -35,14 +35,12 @@ jobs:
         create_credentials_file: true
         export_environment_variables: true    
 
-
     - name: Check for changes in queries/
       id: check_changes
       run: |
-        echo "::set-output name=modified::$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^queries/' || echo false)"
+        echo "modified=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^queries/' || echo false)" >> $GITHUB_ENV
       shell: bash
-    
-    
+          
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
       if: steps.check_changes.outputs.modified != 'false'
