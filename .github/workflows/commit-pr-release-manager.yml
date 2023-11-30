@@ -13,6 +13,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      pull-requests: read 
       
     steps:
     - name: Checkout code
@@ -39,19 +40,26 @@ jobs:
         create_credentials_file: true
         export_environment_variables: true    
 
-    - name: Check paths changed in the latest commit   
-      id: check_changes
-      if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
-      uses: tj-actions/changed-files@v40
-      with:
-        #since_last_remote_commit: true  
-        files_yaml: |
-            doc:
-              - queries/**
+    # - name: Check paths changed in the latest commit   
+    #   id: check_changes
+    #   if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+    #   uses: tj-actions/changed-files@v40
+    #   with:
+    #     #since_last_remote_commit: true  
+    #     files_yaml: |
+    #         doc:
+    #           - queries/**
+
+    - uses: dorny/paths-filter@v2
+      id: pr_proposed_changes
+      with:       
+        filters: |
+          queries:
+            - 'queries/**'
 
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
-      if: steps.check_changes.outputs.doc_any_changed == 'true'
+      if: steps.pr_proposed_changes.outputs.queries == 'true'
       shell: python
       run: |
         import sys
@@ -68,7 +76,7 @@ jobs:
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} 
     
     - name: Download latest index
-      if: steps.check_changes.outputs.doc_any_changed == 'false' || startsWith(github.ref, 'refs/tags/v')
+      if: steps.pr_proposed_changes.outputs.queries == 'true' || startsWith(github.ref, 'refs/tags/v')
       run:
         wget -q https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip
       shell: bash
