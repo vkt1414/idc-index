@@ -79,10 +79,10 @@ jobs:
 
     - name: Setup testing
       run: |
-        !wget "https://github.com/peak/s5cmd/releases/download/v2.2.2/s5cmd_2.2.2_Linux-64bit.tar.gz"\
-          && tar -xvzf "s5cmd_2.2.2_Linux-64bit.tar.gz"\
-          && rm "s5cmd_2.2.2_Linux-64bit.tar.gz"\
-          && mv s5cmd /usr/local/bin/s5cmd
+        wget "https://github.com/peak/s5cmd/releases/download/v2.2.2/s5cmd_2.2.2_Linux-64bit.tar.gz"\
+        && tar -xvzf "s5cmd_2.2.2_Linux-64bit.tar.gz"\
+        && rm "s5cmd_2.2.2_Linux-64bit.tar.gz"\
+        && mv s5cmd /usr/local/bin/s5cmd
       shell: bash        
         
     - name: Test package
