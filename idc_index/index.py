@@ -8,7 +8,7 @@ import tarfile
 import zipfile
 import duckdb
 
-latest_index_url= 'https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip'
+latest_index_url= 'https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip'
 
 class IDCClient:
     def __init__(self):
