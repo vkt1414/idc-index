@@ -33,7 +33,7 @@ jobs:
         pyarrow==13.0.0 db-dtypes==1.1.1 PyGithub==2.1.1 flake8==6.1.0 \
         duckdb==0.9.2
       shell: bash
-      
+
     - name: Authorize Google Cloud
       uses: google-github-actions/auth@v1
       with:
@@ -127,13 +127,13 @@ jobs:
     - name: Get version
       uses: mtkennerly/dunamai-action@v1
       with:
-        env-var: idc_index_version
+        env-var: set_pypi_idc_index_version
         args: --style semver
     - run: echo $idc_index_version
 
     - name: Build a source tarball
       run: python setup.py sdist 
 
-    # - name: Publish distribution to PyPI
-    #   if: startsWith(github.ref, 'refs/tags/v')
-    #   uses: pypa/gh-action-pypi-publish@release/v1
+    - name: Publish distribution to PyPI
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: pypa/gh-action-pypi-publish@release/v1
