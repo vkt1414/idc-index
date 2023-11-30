@@ -36,16 +36,16 @@ jobs:
         export_environment_variables: true    
 
 
-    # - name: Check for changes in queries/
-    #   id: check_changes
-    #   run: |
-    #     echo "::set-output name=modified::$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^queries/' || echo false)"
-    #   shell: bash
+    - name: Check for changes in queries/
+      id: check_changes
+      run: |
+        echo "::set-output name=modified::$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^queries/' || echo false)"
+      shell: bash
     
     
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
-      #if: steps.check_changes.outputs.modified != 'false'
+      if: steps.check_changes.outputs.modified != 'false'
       shell: python
       run: |
         import sys
@@ -80,7 +80,7 @@ jobs:
 
     - name: Create latest Release
       id: create_latest_release
-      if: (github.event_name != 'pull_request')
+      if: (github.event_name != 'pull_request' && steps.check_changes.outputs.modified != 'false')
       uses: ncipollo/release-action@v1
       with:
         tag: latest
