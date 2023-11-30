@@ -3,8 +3,6 @@ on:
   workflow_dispatch:
   push: 
   pull_request:    
-  schedule:
-    - cron: 0 12 */1 * *
 
 jobs:
   update_idc_index:
