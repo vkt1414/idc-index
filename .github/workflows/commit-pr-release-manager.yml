@@ -83,9 +83,9 @@ jobs:
     - run: |
         ls -R
         pwd
-    - uses: actions/upload-artifact
+
+    - uses: actions/upload-artifact@v3
       with:
-        name: Artifacts-V3
         path: ~/*.zip
 
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
