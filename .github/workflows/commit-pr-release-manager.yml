@@ -40,15 +40,6 @@ jobs:
         create_credentials_file: true
         export_environment_variables: true    
 
-    # - name: Check paths changed in the latest commit   
-    #   id: check_changes
-    #   if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
-    #   uses: tj-actions/changed-files@v40
-    #   with:
-    #     #since_last_remote_commit: true  
-    #     files_yaml: |
-    #         doc:
-    #           - queries/**
     - name: Check if queries folder changed in the latest commit  or pull request 
       uses: dorny/paths-filter@v2
       id: pr_proposed_changes
@@ -59,7 +50,7 @@ jobs:
 
     - name: If queries are modified, run them with bigquery
       id: initialize_idc_manager_class
-      if: steps.pr_proposed_changes.outputs.queries == 'true'
+      if: steps.pr_proposed_changes.outputs.queries == 'true' 
       shell: python
       run: |
         import sys
@@ -87,8 +78,22 @@ jobs:
         && tar -xvzf "s5cmd_2.2.2_Linux-64bit.tar.gz"\
         && rm "s5cmd_2.2.2_Linux-64bit.tar.gz"\
         && mv s5cmd /usr/local/bin/s5cmd
-      shell: bash        
-        
+      shell: bash       
+
+    - name: If queries are modified by a pull request, 
+      if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event != 'pull_request'
+      shell: python
+      run: |
+        with open('index.py', 'r') as file:
+            filedata = file.read()
+
+        # Replace the target string
+        filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', 'idc-index.csv.zip')
+
+        # Write the file out again
+        with open('index.py', 'w') as file:
+            file.write(filedata)
+      
     - name: Test package
       run: |
         python -m unittest -vv tests/idcindex.py
@@ -122,7 +127,7 @@ jobs:
         env-var: set_pypi_idc_index_version
         args: --style semver
 
-    - name: Echo soon be released pypi version
+    - name: Echo soon to be released pypi version
       run: |
         echo $set_pypi_idc_index_version
 
