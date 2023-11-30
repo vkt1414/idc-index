@@ -86,22 +86,25 @@ jobs:
 
     - run: |  
         import pandas as pd 
-        pd.read_csv(idc_index.csv.zip, dtype=str, encoding='utf-8')
+        pd.read_csv('idc_index.csv.zip', dtype=str, encoding='utf-8')
       shell: python
 
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
       if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name == 'pull_request'
       run: |
-        import os
-        from pathlib import Path
-        home_dir = str(Path.home())
-        with open('idc_index/index.py', 'r') as file:
-            filedata = file.read()
-            filedata = filedata.replace('https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'work/idc-index/idc-index/idc_index.csv.zip'))    
-        with open('idc_index/index.py', 'w') as file:
-          file.write(filedata)
-      shell: python
-        
+        # Get the home directory
+        home_dir=$HOME
+      
+        # Read the file
+        filedata=$(cat idc_index/index.py)
+      
+        # Replace the URL with the path to the file in the home directory
+        filedata=${filedata//'https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip'/$home_dir/idc_index.csv.zip}
+      
+        # Write the modified data back to the file
+        echo "$filedata" > idc_index/index.py
+      shell: bash
+   
     - name: Test package
       run: |
         python -m unittest -vv tests/idcindex.py
