@@ -84,6 +84,11 @@ jobs:
         ls -R
         pwd
 
+    - run: |  
+        import pandas as pd 
+        pd.read_csv(idc_index.csv.zip, dtype=str, encoding='utf-8')
+      shell: python
+
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
       if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name == 'pull_request'
       run: |
