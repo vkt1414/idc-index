@@ -1,0 +1,96 @@
+name: commit-pr-idc-index-release-manager
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+    branches:
+      - '**'      
+  pull_request:    
+  schedule:
+    - cron: 0 12 */1 * *
+
+jobs:
+  update_idc_index:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/idc-index
+    permissions:
+      id-token: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install dependencies
+      run: pip install requests==2.31.0 pandas==2.1.1 google-cloud-bigquery==3.12.0 pyarrow==13.0.0 db-dtypes==1.1.1 PyGithub==2.1.1 flake8
+    
+    - name: Authorize Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+        create_credentials_file: true
+        export_environment_variables: true    
+
+    # - name: Check for changes in queries/
+    #   id: check_changes
+    #   run: |
+    #     echo "::set-output name=modified::$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^queries/' || echo false)"
+    #   shell: bash
+        
+    - name: Run script to get the latest idc index
+      id: initialize_idc_manager_class
+      #if: steps.check_changes.outputs.modified != 'false'
+      shell: python
+      run: |
+        import sys
+        import os
+        sys.path.append(".github")
+
+        from get_latest_index import IDCIndexManager
+
+        project_id = os.environ['GCP_PROJECT_ID']
+        manager = IDCIndexManager(project_id)
+
+        manager.run_queries_folder("queries/")
+
+    - name: Create Tagged Release
+      id: create_tagged_release
+      if: (startsWith(github.ref, 'refs/tags/v')) && (github.event_name != 'pull_request')
+      uses: ncipollo/release-action@v1
+      with:
+        prerelease: false
+        body: 'Versioned idc-index'
+        artifacts: "*.zip"
+  
+    - name: Create latest Release
+      id: create_latest_release
+      if: (github.event_name != 'pull_request')
+      uses: ncipollo/release-action@v1
+      with:
+        tag: latest
+        prerelease: true
+        makeLatest: true
+        allowUpdates: true
+        body: 'Latest idc-index'
+        artifacts: "*.zip"
+
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings.
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+  
+    - name: Build binary wheel and a source tarball
+      run: python setup.py sdist 
+
+    # - name: Publish distribution to PyPI
+    #   if: (github.event_name != 'pull_request')
+    #   uses: pypa/gh-action-pypi-publish@release/v1
