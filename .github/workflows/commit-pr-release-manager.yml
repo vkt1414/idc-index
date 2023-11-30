@@ -110,7 +110,7 @@ jobs:
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         automatic_release_tag: "latest"
-        #generate_notes: false
+        generate_notes: false
         prerelease: true
         title: "Latest idc-index"
         files: |
