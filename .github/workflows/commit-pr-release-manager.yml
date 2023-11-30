@@ -38,7 +38,7 @@ jobs:
     - name: Check for changes in queries/
       id: check_changes
       run: |
-        echo "modified=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^queries/' || echo false)" >> $GITHUB_ENV
+        echo "modified=$(git diff --name-only --diff-filter=AMDR --cached @~..@ queries/ || echo false)" >> $GITHUB_ENV
       shell: bash
           
     - name: Run script to get the latest idc index
@@ -69,7 +69,7 @@ jobs:
         artifacts: "*.zip"
   
     - name: Update latest tag's source code
-      if: (github.event_name != 'pull_request')
+      if: (github.event_name != 'pull_request') && (steps.check_changes.outputs.modified != 'false')
       uses: richardsimko/update-tag@v1
       with:
         tag_name: latest
@@ -78,7 +78,7 @@ jobs:
 
     - name: Create latest Release
       id: create_latest_release
-      if: (github.event_name != 'pull_request' && steps.check_changes.outputs.modified != 'false')
+      if: (github.event_name != 'pull_request') && (steps.check_changes.outputs.modified != 'false')
       uses: ncipollo/release-action@v1
       with:
         tag: latest
