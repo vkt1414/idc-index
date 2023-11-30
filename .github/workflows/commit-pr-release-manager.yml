@@ -84,10 +84,6 @@ jobs:
         ls -R
         pwd
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: idc_index.csv.zip
-
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
       if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name == 'pull_request'
       run: |
