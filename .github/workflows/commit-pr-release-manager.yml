@@ -113,7 +113,7 @@ jobs:
         #generate_notes: false
         prerelease: true
         title: "Latest idc-index"
-          files: |
+        files: |
             *.zip
 
     - name: Get version
