@@ -53,7 +53,7 @@ jobs:
 
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
-      if: steps.check_changes.outputs.doc_any_changed == 'true'
+      #if: steps.check_changes.outputs.doc_any_changed == 'true'
       shell: python
       run: |
         import sys
@@ -69,11 +69,11 @@ jobs:
       env: 
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} 
     
-    - name: Download latest index
-      if: steps.check_changes.outputs.doc_any_changed == 'false'
-      run:
-        wget https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
-      shell: bash
+    # - name: Download latest index
+    #   if: steps.check_changes.outputs.doc_any_changed == 'false'
+    #   run:
+    #     wget https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
+    #   shell: bash
 
     - name: Lint with flake8
       run: |
