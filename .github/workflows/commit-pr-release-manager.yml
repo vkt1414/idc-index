@@ -43,6 +43,7 @@ jobs:
 
     - name: Check paths changed in the latest commit   
       id: check_changes
+      if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
       uses: tj-actions/changed-files@v40
       with:
         #since_last_remote_commit: true  
