@@ -88,7 +88,7 @@ jobs:
     - name: Test package
       run: |
         python -m unittest -vv tests/idcindex.py
-      shell: python
+      shell: bash
 
     - name: Create Tagged Release
       id: create_tagged_release
