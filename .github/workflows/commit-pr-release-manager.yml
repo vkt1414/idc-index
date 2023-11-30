@@ -92,7 +92,7 @@ jobs:
         home_dir = str(Path.home())
         with open('idc_index/index.py', 'r') as file:
             filedata = file.read()
-            filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'idc_index/idc_index.csv.zip'))    
+            filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'idc-index/idc-index/idc_index.csv.zip'))    
         with open('idc_index/index.py', 'w') as file:
           file.write(filedata)
       shell: python
