@@ -80,6 +80,9 @@ jobs:
         && mv s5cmd /usr/local/bin/s5cmd
       shell: bash       
 
+    - run: |
+        ls -R
+
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
       if: steps.pr_proposed_changes.outputs.queries == 'true' && github.event_name == 'pull_request'
       run: |
@@ -88,7 +91,7 @@ jobs:
         home_dir = str(Path.home())
         with open('idc_index/index.py', 'r') as file:
             filedata = file.read()
-            filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'idc_index.csv.zip'))    
+            filedata = filedata.replace('https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip', os.path.join(home_dir, 'idc-index/idc_index.csv.zip'))    
         with open('idc_index/index.py', 'w') as file:
           file.write(filedata)
       shell: python
