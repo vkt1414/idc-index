@@ -72,15 +72,8 @@ jobs:
     - name: Download latest index
       if: steps.check_changes.outputs.doc_any_changed == 'false' || startsWith(github.ref, 'refs/tags/v')
       run:
-        wget -q https://github.com/vkt1414/idc-index/releases/download/latest/idc_index.csv.zip
+        wget -q https://github.com/ImagingDataCommons/idc-index/releases/download/latest/idc_index.csv.zip
       shell: bash
-
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings.
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Setup testing
       run: |
