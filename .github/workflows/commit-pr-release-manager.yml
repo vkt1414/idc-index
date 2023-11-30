@@ -35,15 +35,20 @@ jobs:
         create_credentials_file: true
         export_environment_variables: true    
 
-    - name: Check for changes in queries/
+    - name: Check if queries folder is modified    
       id: check_changes
-      run: |
-        echo "modified=$(git diff --name-only --diff-filter=AMDR --cached @~..@ queries/ || echo false)" >> $GITHUB_ENV
-      shell: bash
+      uses: jitterbit/get-changed-files@v1    
+    - run: |
+        for changed_file in ${{ steps.check_changes.outputs.all }}; do
+          if [[ $changed_file == queries/* ]]; then
+            echo "modified=true" >> $GITHUB_ENV
+            break
+          fi
+        done
           
     - name: Run script to get the latest idc index
       id: initialize_idc_manager_class
-      if: steps.check_changes.outputs.modified != 'false'
+      if: env.modified != 'false'
       shell: python
       run: |
         import sys
@@ -69,7 +74,7 @@ jobs:
         artifacts: "*.zip"
   
     - name: Update latest tag's source code
-      if: (github.event_name != 'pull_request') && (steps.check_changes.outputs.modified != 'false')
+      if: (github.event_name != 'pull_request') && (env.modified != 'false')
       uses: richardsimko/update-tag@v1
       with:
         tag_name: latest
@@ -78,7 +83,7 @@ jobs:
 
     - name: Create latest Release
       id: create_latest_release
-      if: (github.event_name != 'pull_request') && (steps.check_changes.outputs.modified != 'false')
+      if: (github.event_name != 'pull_request') && (env.modified != 'false')
       uses: ncipollo/release-action@v1
       with:
         tag: latest
@@ -102,3 +107,4 @@ jobs:
     # - name: Publish distribution to PyPI
     #   if: (github.event_name != 'pull_request')
     #   uses: pypa/gh-action-pypi-publish@release/v1
+     
