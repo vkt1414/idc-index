@@ -74,10 +74,10 @@ jobs:
 
     - name: Setup testing
       run: |
-        wget -q "https://github.com/peak/s5cmd/releases/download/v2.2.2/s5cmd_2.2.2_Linux-64bit.tar.gz"\
-        && tar -xvzf "s5cmd_2.2.2_Linux-64bit.tar.gz"\
-        && rm "s5cmd_2.2.2_Linux-64bit.tar.gz"\
-        && mv s5cmd /usr/local/bin/s5cmd
+        wget -q "https://github.com/peak/s5cmd/releases/download/v2.2.2/s5cmd_2.2.2_Linux-64bit.tar.gz"
+        tar -xvzf "s5cmd_2.2.2_Linux-64bit.tar.gz" s5cmd
+        rm "s5cmd_2.2.2_Linux-64bit.tar.gz"
+        mv s5cmd /usr/local/bin/s5cmd
       shell: bash       
 
     - name: If queries are modified by a pull request, change latest_index_url to use locally available csv
