@@ -469,7 +469,7 @@ class IDCClient:
         return viewer_url
 
     def _validate_update_manifest_and_get_download_size(
-        self, manifestFile, downloadDir, validate_manifest
+        self, manifestFile, downloadDir, validate_manifest=False
     ) -> tuple[float, str, Path]:
         """
         Validates the manifest file by checking the URLs in the manifest
@@ -477,6 +477,7 @@ class IDCClient:
         Args:
             manifestFile (str): The path to the manifest file.
             downloadDir (str): The path to the download directory.
+            validate_manifest (bool): If True, validates the manifest file for any errors. Defaults to True.
         Returns:
             total_size (float): The total size of all series in the manifest file.
             endpoint_to_use (str): The endpoint URL to use (either AWS or GCP).
@@ -565,16 +566,18 @@ class IDCClient:
                     cmd, capture_output=True, text=True, check=False
                 )
                 if process.stderr and process.stdout.startswith("ERROR"):
-                    logger.debug(
+                    logger.error(
                         "Folder not available in GCP. Manifest appears to be invalid."
                     )
-                    if validate_manifest:
-                        raise ValueError
+                    raise ValueError
                 else:
                     endpoint_to_use = gcp_endpoint_url
 
         elif merged_df["endpoint"].values[0] == "aws":
             endpoint_to_use = aws_endpoint_url
+        # TODO: here we assume that the endpoint is GCP; we could check at least the first URL to be sure,
+        # but we can take care of this in a more principled way by including GCP bucket directly
+        # in the future, see https://github.com/ImagingDataCommons/idc-index/pull/56#discussion_r1582157048
         else:
             endpoint_to_use = gcp_endpoint_url
 
@@ -622,6 +625,11 @@ class IDCClient:
                 desc="Downloading data",
             )
 
+            # TODO: this is suboptimal, since we are checking every file, while we could just
+            # check the size of the files in the folders corresponding to the series being downloaded;
+            # this approach will also be problematic if user adds or deletes unrelated files from
+            # the download directory; we will address this in the future by preserving the folder structure
+            # at the destination, see https://github.com/ImagingDataCommons/idc-index/pull/56#discussion_r1582854525
             while True:
                 downloaded_bytes = (
                     sum(
@@ -883,7 +891,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
         manifestFile: str,
         downloadDir: str,
         quiet: bool = True,
-        validate_manifest: bool = True,
+        validate_manifest: bool = False,
         show_progress_bar: bool = True,
         use_s5cmd_sync_dry_run: bool = False,
     ) -> None:
