@@ -19,6 +19,7 @@ from packaging.version import Version
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.DEBUG)
 
 aws_endpoint_url = "https://s3.amazonaws.com"
 gcp_endpoint_url = "https://storage.googleapis.com"
@@ -381,7 +382,7 @@ class IDCClient:
             available in IDC
 
             viewer_selector: string containing the name of the viewer to use. Must be one of the following:
-            ohif_v2, ohif_v2, or slim. If not provided, default viewers will be used.
+            ohif_v2, ohif_v3, or slim. If not provided, default viewers will be used.
 
         Returns:
             string containing the IDC viewer URL for the given SeriesInstanceUID
@@ -487,6 +488,7 @@ class IDCClient:
         """
         logger.debug("manifest validation is requested: " + str(validate_manifest))
 
+        print("Parsing the manifest. Please wait..")
         # Read the manifest as a csv file
         manifest_df = pd.read_csv(
             manifestFile, comment="#", skip_blank_lines=True, header=None
@@ -506,19 +508,23 @@ class IDCClient:
             PRAGMA disable_progress_bar;
             with index_temp as
             (select
-            *,
+            seriesInstanceUID,
+            series_aws_url,
+            series_size_MB,
             regexp_extract(series_aws_url, '(?:.*?\\/){3}([^\\/?#]+)', 1) index_crdc_series_uuid
             from index_df_copy),
             manifest_temp as (
             select
             manifest_cp_cmd,
             regexp_extract(manifest_cp_cmd, '(?:.*?\\/){3}([^\\/?#]+)', 1) as manifest_crdc_series_uuid,
-            regexp_replace(regexp_replace(manifest_cp_cmd, 'cp ', ''),' .','') as s3_url
+            regexp_replace(regexp_replace(manifest_cp_cmd, 'cp ', ''), '\\s[^\\s]*$', '') as s3_url,
             from
             manifest_df
             )
             select
-            *,
+            seriesInstanceuid,
+            s3_url,
+            series_size_MB,
             index_crdc_series_uuid==manifest_crdc_series_uuid as crdc_series_uuid_match,
             s3_url==series_aws_url as s3_url_match,
             CASE WHEN s3_url==series_aws_url THEN 'aws' ELSE 'unknown' END as endpoint
@@ -584,9 +590,9 @@ class IDCClient:
 
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_manifest_file:
-            for s3_url in merged_df["s3_url"]:
-                temp_manifest_file.write(f"cp {s3_url} {downloadDir}\n")
-
+            merged_df["s5cmd_cmd"] = "cp " + merged_df["s3_url"] + " " + downloadDir
+            merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
+            print("Parsing the manifest is finished. Download will begin soon")
         return total_size, endpoint_to_use, Path(temp_manifest_file.name)
 
     @staticmethod
@@ -694,7 +700,10 @@ class IDCClient:
             stdout_df
             )
             select
-            *
+            distinct
+            seriesInstanceUID,
+            series_size_MB,
+            s3_url
             from
             sync_temp
             left join index_temp on index_temp.index_crdc_series_uuid = sync_temp.sync_crdc_instance_uuid
@@ -707,9 +716,9 @@ class IDCClient:
 
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as synced_manifest:
-            for s3_url in merged_df["s3_url"]:
-                synced_manifest.write(f"sync {s3_url} {downloadDir}\n")
-        logger.info("Parsing the s5cmd sync dry run output finished")
+            merged_df["s5cmd_cmd"] = "sync " + merged_df["s3_url"] + " " + downloadDir
+            merged_df["s5cmd_cmd"].to_csv(synced_manifest, header=False, index=False)
+            logger.info("Parsing the s5cmd sync dry run output finished")
         return Path(synced_manifest.name), sync_size_rounded
 
     def _s5cmd_run(
@@ -1019,10 +1028,10 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             # Download the files
             # make temporary file to store the list of files to download
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as manifest_file:
-                for index, row in result_df.iterrows():
-                    manifest_file.write(
-                        "cp " + row["series_aws_url"] + " " + downloadDir + "\n"
-                    )
+                result_df["s5cmd_cmd"] = (
+                    "cp " + result_df["series_aws_url"] + " " + downloadDir
+                )
+                result_df["s5cmd_cmd"].to_csv(manifest_file, header=False, index=False)
             logger.info(
                 """
 Temporary download manifest is generated and is passed to self._s5cmd_run
