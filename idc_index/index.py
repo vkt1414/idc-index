@@ -794,14 +794,6 @@ class IDCClient:
             while process.poll() is None:
                 time.sleep(0.5)
 
-        # Check if download process completed successfully
-        if process.returncode != 0:
-            error_message = f"Download process failed: {stderr!s}"
-            logger.error(error_message)
-            raise RuntimeError(error_message)
-
-        logger.info("Successfully downloaded files to %s", str(downloadDir))
-
     def _parse_s5cmd_sync_output_and_generate_synced_manifest(
         self, stdout, downloadDir, dirTemplate
     ) -> Path:
