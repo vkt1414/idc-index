@@ -621,7 +621,7 @@ class IDCClient:
                 JOIN
                     index using (seriesInstanceUID)
                 """
-            validated_df = self.sql_query(sql)
+            merged_df = self.sql_query(sql)
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_manifest_file:
             if (
@@ -630,25 +630,21 @@ class IDCClient:
                 and len(os.listdir(downloadDir)) != 0
             ):
                 if dirTemplate is not None:
-                    validated_df["s5cmd_cmd"] = (
-                        "sync " + validated_df["s3_url"] + " " + validated_df["path"]
+                    merged_df["s5cmd_cmd"] = (
+                        "sync " + merged_df["s3_url"] + " " + merged_df["path"]
                     )
                 else:
-                    validated_df["s5cmd_cmd"] = (
-                        "sync " + validated_df["s3_url"] + " " + downloadDir
+                    merged_df["s5cmd_cmd"] = (
+                        "sync " + merged_df["s3_url"] + " " + downloadDir
                     )
             elif dirTemplate is not None:
-                validated_df["s5cmd_cmd"] = (
-                    "cp " + validated_df["s3_url"] + " " + validated_df["path"]
+                merged_df["s5cmd_cmd"] = (
+                    "cp " + merged_df["s3_url"] + " " + merged_df["path"]
                 )
             else:
-                validated_df["s5cmd_cmd"] = (
-                    "cp " + validated_df["s3_url"] + " " + downloadDir
-                )
+                merged_df["s5cmd_cmd"] = "cp " + merged_df["s3_url"] + " " + downloadDir
 
-            validated_df["s5cmd_cmd"].to_csv(
-                temp_manifest_file, header=False, index=False
-            )
+            merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
             print("Parsing the manifest is finished. Download will begin soon")
         return total_size, endpoint_to_use, Path(temp_manifest_file.name)
 
@@ -1213,47 +1209,44 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             result_df = self.sql_query(sql)
             # Download the files
             # make temporary file to store the list of files to download
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as manifest_file:
-                if (
-                    show_progress_bar
-                    and use_s5cmd_sync_dry_run
-                    and len(os.listdir(downloadDir)) != 0
-                ):
-                    if dirTemplate is not None:
-                        result_df["s5cmd_cmd"] = (
-                            "sync "
-                            + result_df["series_aws_url"]
-                            + " "
-                            + result_df["path"]
-                        )
-                    else:
-                        result_df["s5cmd_cmd"] = (
-                            "sync " + result_df["series_aws_url"] + " " + downloadDir
-                        )
-                elif dirTemplate is not None:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as manifest_file:
+            if (
+                show_progress_bar
+                and use_s5cmd_sync_dry_run
+                and len(os.listdir(downloadDir)) != 0
+            ):
+                if dirTemplate is not None:
                     result_df["s5cmd_cmd"] = (
                         "sync " + result_df["series_aws_url"] + " " + result_df["path"]
                     )
                 else:
                     result_df["s5cmd_cmd"] = (
-                        "cp " + result_df["series_aws_url"] + " " + downloadDir
+                        "sync " + result_df["series_aws_url"] + " " + downloadDir
                     )
-                result_df["s5cmd_cmd"].to_csv(manifest_file, header=False, index=False)
-            logger.info(
-                """
+            elif dirTemplate is not None:
+                result_df["s5cmd_cmd"] = (
+                    "cp " + result_df["series_aws_url"] + " " + result_df["path"]
+                )
+            else:
+                result_df["s5cmd_cmd"] = (
+                    "cp " + result_df["series_aws_url"] + " " + downloadDir
+                )
+            result_df["s5cmd_cmd"].to_csv(manifest_file, header=False, index=False)
+        logger.info(
+            """
 Temporary download manifest is generated and is passed to self._s5cmd_run
 """
-            )
-            self._s5cmd_run(
-                endpoint_to_use=aws_endpoint_url,
-                manifest_file=Path(manifest_file.name),
-                total_size=total_size,
-                downloadDir=downloadDir,
-                quiet=quiet,
-                show_progress_bar=show_progress_bar,
-                use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
-                dirTemplate=dirTemplate,
-            )
+        )
+        self._s5cmd_run(
+            endpoint_to_use=aws_endpoint_url,
+            manifest_file=Path(manifest_file.name),
+            total_size=total_size,
+            downloadDir=downloadDir,
+            quiet=quiet,
+            show_progress_bar=show_progress_bar,
+            use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+            dirTemplate=dirTemplate,
+        )
 
     def download_dicom_series(
         self,
