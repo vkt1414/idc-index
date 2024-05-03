@@ -470,7 +470,12 @@ class IDCClient:
         return viewer_url
 
     def _validate_update_manifest_and_get_download_size(
-        self, manifestFile, downloadDir, validate_manifest
+        self,
+        manifestFile,
+        downloadDir,
+        validate_manifest,
+        show_progress_bar,
+        use_s5cmd_sync_dry_run,
     ) -> tuple[float, str, Path]:
         """
         Validates the manifest file by checking the URLs in the manifest
@@ -478,6 +483,9 @@ class IDCClient:
         Args:
             manifestFile (str): The path to the manifest file.
             downloadDir (str): The path to the download directory.
+            validate_manifest (bool, optional): If True, validates the manifest for any errors. Defaults to True.
+            show_progress_bar (bool, optional): If True, tracks the progress of download
+            use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
         Returns:
             total_size (float): The total size of all series in the manifest file.
             endpoint_to_use (str): The endpoint URL to use (either AWS or GCP).
@@ -590,7 +598,16 @@ class IDCClient:
 
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_manifest_file:
-            merged_df["s5cmd_cmd"] = "cp " + merged_df["s3_url"] + " " + downloadDir
+            if (
+                show_progress_bar
+                and use_s5cmd_sync_dry_run
+                and len(os.listdir(downloadDir)) != 0
+            ):
+                merged_df["s5cmd_cmd"] = (
+                    "sync " + merged_df["s3_url"] + " " + downloadDir
+                )
+            else:
+                merged_df["s5cmd_cmd"] = "cp " + merged_df["s3_url"] + " " + downloadDir
             merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
             print("Parsing the manifest is finished. Download will begin soon")
         return total_size, endpoint_to_use, Path(temp_manifest_file.name)
@@ -764,8 +781,8 @@ class IDCClient:
         logger.info(f"use_s5cmd_sync_dry_run: {use_s5cmd_sync_dry_run}")
 
         if quiet:
-            stdout = subprocess.PIPE
-            stderr = subprocess.STDOUT
+            stdout = subprocess.DEVNULL
+            stderr = subprocess.DEVNULL
         else:
             stdout = None
             stderr = None
@@ -924,7 +941,11 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             endpoint_to_use,
             temp_manifest_file,
         ) = self._validate_update_manifest_and_get_download_size(
-            manifestFile, downloadDir, validate_manifest
+            manifestFile,
+            downloadDir,
+            validate_manifest,
+            show_progress_bar,
+            use_s5cmd_sync_dry_run,
         )
 
         total_size_rounded = round(total_size, 2)
@@ -1028,9 +1049,18 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             # Download the files
             # make temporary file to store the list of files to download
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as manifest_file:
-                result_df["s5cmd_cmd"] = (
-                    "cp " + result_df["series_aws_url"] + " " + downloadDir
-                )
+                if (
+                    show_progress_bar
+                    and use_s5cmd_sync_dry_run
+                    and len(os.listdir(downloadDir)) != 0
+                ):
+                    result_df["s5cmd_cmd"] = (
+                        "sync " + result_df["series_aws_url"] + " " + downloadDir
+                    )
+                else:
+                    result_df["s5cmd_cmd"] = (
+                        "cp " + result_df["series_aws_url"] + " " + downloadDir
+                    )
                 result_df["s5cmd_cmd"].to_csv(manifest_file, header=False, index=False)
             logger.info(
                 """
