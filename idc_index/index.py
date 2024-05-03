@@ -643,24 +643,24 @@ class IDCClient:
         parts = dirTemplate.split("%")
         # Remove empty strings from the list
         parts = [part for part in parts if part]
-        # Further split each part by '-', '/', '_', '.', and ','
-        parts = [
-            item for part in parts for item in re.split("(-|/|_|\\.|,)", part) if item
-        ]
-        # Wrap special characters in single quotes
-        parts = [
-            f"'{part}'" if part in ("-", "/", "_", ".", ",") else part for part in parts
-        ]
+        new_parts = []
         # Validate the attributes
         for part in parts:
-            if (
-                part
-                not in ("-", "/", "_", ".", ",", "'", "'-'", "'/'", "'_'", "'.'", "','")
-                and part.replace("'", "") not in valid_attributes
-                and part != ""
-            ):
-                error = f"The attribute is not allowed: {part}. Please pick your combination from {valid_attributes}"
-                raise ValueError(error)
+            if part not in valid_attributes:
+                # If the part is not a valid attribute, split it by special characters except '_'
+                split_parts = re.split(r"(?<=[^\w\s])|(?=[^\w\s])", part)
+                # If the part is still not a valid attribute, check for underscores
+                if all(sub_part in valid_attributes for sub_part in split_parts):
+                    new_parts.extend(split_parts)
+                else:
+                    split_parts = [
+                        f"'{item}'" if item in ("-", "/", ".", ",") else item
+                        for item in split_parts
+                    ]
+                    new_parts.extend(split_parts)
+            else:
+                new_parts.append(part)
+        parts = new_parts
         # Add quotes around downloadDir and add ',' and '/'
         parts = [f"'{downloadDir}'", "'/'", *parts]
         # Join the parts with commas to create the argument list for CONCAT
