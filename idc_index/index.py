@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -613,6 +614,61 @@ class IDCClient:
         return total_size, endpoint_to_use, Path(temp_manifest_file.name)
 
     @staticmethod
+    def _generate_sql_concat_for_building_directory(dirTemplate, downloadDir):
+        """
+        This function generates an SQL CONCAT function string that can be used to build a directory path.
+
+        Parameters:
+        dirTemplate (str): A template string for the directory path. This string should contain placeholders for the attributes, wrapped in '%'. For example: "%PatientID-%Modality%StudyInstanceUID".
+        downloadDir (str): The base directory where the files will be downloaded.
+
+        Returns:
+        str: An SQL CONCAT function string that concatenates the downloadDir with the values of the attributes specified in the dirTemplate, with literals '-' and '/' as specified in the template string.
+
+        Raises:
+        ValueError: If an attribute in the dirTemplate string is not in the list of valid attributes.
+
+        Example:
+        >>> _generate_sql_concat_for_building_directory("%PatientID-%Modality%StudyInstanceUID", 'data')
+        "CONCAT('data', '/', PatientID, '-', Modality, StudyInstanceUID)"
+        """
+        valid_attributes = [
+            "PatientID",
+            "collection_id",
+            "Modality",
+            "StudyInstanceUID",
+            "SeriesInstanceUID",
+        ]
+        # Split the template into parts by '%'
+        parts = dirTemplate.split("%")
+        # Remove empty strings from the list
+        parts = [part for part in parts if part]
+        # Further split each part by '-', '/', '_', '.', and ','
+        parts = [
+            item for part in parts for item in re.split("(-|/|_|\\.|,)", part) if item
+        ]
+        # Wrap special characters in single quotes
+        parts = [
+            f"'{part}'" if part in ("-", "/", "_", ".", ",") else part for part in parts
+        ]
+        # Validate the attributes
+        for part in parts:
+            if (
+                part
+                not in ("-", "/", "_", ".", ",", "'", "'-'", "'/'", "'_'", "'.'", "','")
+                and part.replace("'", "") not in valid_attributes
+                and part != ""
+            ):
+                error = f"The attribute is not allowed: {part}. Please pick your combination from {valid_attributes}"
+                raise ValueError(error)
+        # Add quotes around downloadDir and add ',' and '/'
+        parts = [f"'{downloadDir}'", "'/'", *parts]
+        # Join the parts with commas to create the argument list for CONCAT
+        arguments = ", ".join(parts)
+        # Return the CONCAT function string
+        return f"CONCAT({arguments})"
+
+    @staticmethod
     def _track_download_progress(
         size_MB: int,
         downloadDir: str,
@@ -972,6 +1028,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync_dry_run=False,
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ):
         """Download the files corresponding to the selection. The filtering will be applied in sequence (but does it matter?) by first selecting the collection(s), followed by
         patient(s), study(studies) and series. If no filtering is applied, all the files will be downloaded.
@@ -983,14 +1040,11 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             patientId: string or list of strings containing the values of PatientID to filter by
             studyInstanceUID: string or list of strings containing the values of DICOM StudyInstanceUID to filter by
             seriesInstanceUID: string or list of strings containing the values of DICOM SeriesInstanceUID to filter by
-            quiet (bool, optional): If True, suppresses the output of the subprocess. Defaults to True.
+            quiet (bool, optional): If True, suppresses the output of the subprocess. Defaults to True
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
-        Returns:
-
-        Raises:
-            TypeError: If any of the parameters are not of the expected type
         """
 
         downloadDir = os.path.abspath(downloadDir).replace("\\", "/")
@@ -1046,6 +1100,20 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             )
         else:
             print("Total size: " + self._format_size(total_size))
+            hierarchy = self._generate_sql_concat_for_building_directory(
+                downloadDir=downloadDir,
+                dirTemplate="%PatientID-%Modality%StudyInstanceUID",
+            )
+            sql = f"""
+                select
+                series_aws_url,
+                {hierarchy} as path
+                from
+                result_df
+                join
+                index using (seriesInstanceUID)
+                """
+            result_df = self.sql_query(sql)
             # Download the files
             # make temporary file to store the list of files to download
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as manifest_file:
@@ -1054,8 +1122,20 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
                     and use_s5cmd_sync_dry_run
                     and len(os.listdir(downloadDir)) != 0
                 ):
+                    if dirTemplate is not None:
+                        result_df["s5cmd_cmd"] = (
+                            "sync "
+                            + result_df["series_aws_url"]
+                            + " "
+                            + result_df["path"]
+                        )
+                    else:
+                        result_df["s5cmd_cmd"] = (
+                            "sync " + result_df["series_aws_url"] + " " + downloadDir
+                        )
+                elif dirTemplate is not None:
                     result_df["s5cmd_cmd"] = (
-                        "sync " + result_df["series_aws_url"] + " " + downloadDir
+                        "sync " + result_df["series_aws_url"] + " " + result_df["path"]
                     )
                 else:
                     result_df["s5cmd_cmd"] = (
