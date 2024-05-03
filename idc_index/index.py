@@ -942,7 +942,6 @@ class IDCClient:
         logger.debug(f"use_s5cmd_sync: {use_s5cmd_sync}")
         logger.info(f"dirTemplate: {dirTemplate}")
 
-
         if quiet:
             stdout = subprocess.DEVNULL
             stderr = subprocess.DEVNULL
@@ -1048,7 +1047,11 @@ Destination folder is not empty and sync size is less than total size. Displayin
                 universal_newlines=True,
             ) as process:
                 self._track_download_progress(
-                    total_size, downloadDir, process, show_progress_bar,list_of_directories
+                    total_size,
+                    downloadDir,
+                    process,
+                    show_progress_bar,
+                    list_of_directories,
                 )
 
                 stderr_log_file.close()
@@ -1112,7 +1115,7 @@ Destination folder is not empty and sync size is less than total size. Displayin
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync (bool, optional): If True, will use s5cmd sync operation instead of cp when downloadDirectory is not empty; this can significantly improve the download speed if the content is partially downloaded
             dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
-            
+
         Raises:
             ValueError: If the download directory does not exist.
         """
@@ -1133,7 +1136,7 @@ Destination folder is not empty and sync size is less than total size. Displayin
             validate_manifest,
             show_progress_bar,
             use_s5cmd_sync,
-            dirTemplate
+            dirTemplate,
         )
 
         total_size_rounded = round(total_size, 2)
@@ -1162,7 +1165,7 @@ Destination folder is not empty and sync size is less than total size. Displayin
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync=False,
-        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID"
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ):
         """Download the files corresponding to the selection. The filtering will be applied in sequence (but does it matter?) by first selecting the collection(s), followed by
         patient(s), study(studies) and series. If no filtering is applied, all the files will be downloaded.
@@ -1178,7 +1181,7 @@ Destination folder is not empty and sync size is less than total size. Displayin
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync (bool, optional): If True, will use s5cmd sync operation instead of cp when downloadDirectory is not empty; this can significantly improve the download speed if the content is partially downloaded
             dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
-            
+
         """
 
         downloadDir = os.path.abspath(downloadDir).replace("\\", "/")
@@ -1260,10 +1263,7 @@ Destination folder is not empty and sync size is less than total size. Displayin
             # Download the files
             # make temporary file to store the list of files to download
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as manifest_file:
-            if (
-                use_s5cmd_sync
-                and len(os.listdir(downloadDir)) != 0
-            ):
+            if use_s5cmd_sync and len(os.listdir(downloadDir)) != 0:
                 if dirTemplate is not None:
                     result_df["s5cmd_cmd"] = (
                         "sync " + result_df["series_aws_url"] + " " + result_df["path"]
@@ -1323,7 +1323,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync (bool, optional): If True, will use s5cmd sync operation instead of cp when downloadDirectory is not empty; this can significantly improve the download speed if the content is partially downloaded
             dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
-            
+
         Returns: None
 
         Raises:
@@ -1337,7 +1337,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync=use_s5cmd_sync,
-            dirTemplate=dirTemplate
+            dirTemplate=dirTemplate,
         )
 
     def download_dicom_studies(
@@ -1361,7 +1361,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync (bool, optional): If True, will use s5cmd sync operation instead of cp when downloadDirectory is not empty; this can significantly improve the download speed if the content is partially downloaded
             dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
-           
+
         Returns: None
 
         Raises:
@@ -1375,7 +1375,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync=use_s5cmd_sync,
-            dirTemplate=dirTemplate
+            dirTemplate=dirTemplate,
         )
 
     def download_dicom_patients(
@@ -1399,7 +1399,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync (bool, optional): If True, will use s5cmd sync operation instead of cp when downloadDirectory is not empty; this can significantly improve the download speed if the content is partially downloaded
             dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
-            
+
         Returns: None
 
         Raises:
@@ -1414,7 +1414,6 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync=use_s5cmd_sync,
             dirTemplate=dirTemplate,
-
         )
 
     def download_collection(
@@ -1425,7 +1424,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync=False,
-        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID"
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ) -> None:
         """
         Download the files corresponding to the studyInstanceUID to the specified directory.
@@ -1438,7 +1437,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync (bool, optional): If True, will use s5cmd sync operation instead of cp when downloadDirectory is not empty; this can significantly improve the download speed if the content is partially downloaded
             dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
-            
+
         Returns: None
 
         Raises:
@@ -1452,7 +1451,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync=use_s5cmd_sync,
-            dirTemplate=dirTemplate
+            dirTemplate=dirTemplate,
         )
 
     def sql_query(self, sql_query):
