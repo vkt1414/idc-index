@@ -600,11 +600,10 @@ class IDCClient:
         total_size = merged_df["series_size_MB"].sum()
         total_size = round(total_size, 2)
 
-        hierarchy = self._generate_sql_concat_for_building_directory(
-            dirTemplate=dirTemplate, downloadDir=downloadDir
-        )
-
         if dirTemplate is not None:
+            hierarchy = self._generate_sql_concat_for_building_directory(
+                dirTemplate=dirTemplate, downloadDir=downloadDir
+            )
             sql = f"""
                 WITH temp as
                     (
@@ -838,10 +837,10 @@ class IDCClient:
 
         logger.info(f"sync_size_rounded: {sync_size_rounded}")
 
-        hierarchy = self._generate_sql_concat_for_building_directory(
-            dirTemplate=dirTemplate, downloadDir=downloadDir
-        )
         if dirTemplate is not None:
+            hierarchy = self._generate_sql_concat_for_building_directory(
+                dirTemplate=dirTemplate, downloadDir=downloadDir
+            )
             sql = f"""
                 WITH temp as
                     (
