@@ -647,7 +647,9 @@ class IDCClient:
                     "cp " + validated_df["s3_url"] + " " + downloadDir
                 )
 
-            merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
+            validated_df["s5cmd_cmd"].to_csv(
+                temp_manifest_file, header=False, index=False
+            )
             print("Parsing the manifest is finished. Download will begin soon")
         return total_size, endpoint_to_use, Path(temp_manifest_file.name)
 
@@ -1177,11 +1179,12 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             )
         else:
             print("Total size: " + self._format_size(total_size))
+
+        if dirTemplate is not None:
             hierarchy = self._generate_sql_concat_for_building_directory(
                 downloadDir=downloadDir,
                 dirTemplate=dirTemplate,
             )
-        if dirTemplate is not None:
             sql = f"""
                 WITH temp as
                     (
