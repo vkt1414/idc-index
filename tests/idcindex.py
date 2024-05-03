@@ -95,11 +95,10 @@ class TestIDCClient(unittest.TestCase):
         use_s5cmd_sync_dry_run_values = [True, False]
         dirTemplateValues = [
             None,
-            "%collection_id_%PatientID,%Modality.%StudyInstanceUID%SeriesInstanceUID",
-            "%collection_id.%PatientID_%Modality,%StudyInstanceUID%SeriesInstanceUID",
-            "%collection_id%PatientID.%Modality_%StudyInstanceUID,%SeriesInstanceUID",
-            "%collection_id,%PatientID_%Modality.%StudyInstanceUID,%SeriesInstanceUID",
-            "%collection_id_%PatientID.%Modality,%StudyInstanceUID.%SeriesInstanceUID",
+            "%collection_id_%PatientID/%Modality-%StudyInstanceUID%SeriesInstanceUID",
+            "%collection_id%PatientID-%Modality_%StudyInstanceUID/%SeriesInstanceUID",
+            "%collection_id-%PatientID_%Modality/%StudyInstanceUID-%SeriesInstanceUID",
+            "%collection_id_%PatientID/%Modality/%StudyInstanceUID_%SeriesInstanceUID",
         ]
 
         # Generate all combinations of optional parameters
@@ -147,11 +146,9 @@ class TestIDCClient(unittest.TestCase):
         show_progress_bar_values = [True, False]
         use_s5cmd_sync_dry_run_values = [True, False]
         dirTemplateValues = [
-            "%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
             None,
-            "%collection_id.%PatientID.%Modality.%StudyInstanceUID.%SeriesInstanceUID",
+            "%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
             "%collection_id%PatientID%Modality%StudyInstanceUID%SeriesInstanceUID",
-            "%collection_id,%PatientID.%Modality_%StudyInstanceUID%SeriesInstanceUID",
         ]
         # Generate all combinations of optional parameters
         combinations = product(
@@ -192,9 +189,8 @@ class TestIDCClient(unittest.TestCase):
         show_progress_bar_values = [True, False]
         use_s5cmd_sync_dry_run_values = [True, False]
         dirTemplateValues = [
-            "%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
             None,
-            "%collection_id,%PatientID,%Modality,%StudyInstanceUID,%SeriesInstanceUID",
+            "%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
             "%collection_id_%PatientID_%Modality_%StudyInstanceUID_%SeriesInstanceUID",
         ]
         # Generate all combinations of optional parameters

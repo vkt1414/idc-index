@@ -650,23 +650,6 @@ class IDCClient:
 
     @staticmethod
     def _generate_sql_concat_for_building_directory(dirTemplate, downloadDir):
-        """
-        This function generates an SQL CONCAT function string that can be used to build a directory path.
-
-        Parameters:
-        dirTemplate (str): A template string for the directory path. This string should contain placeholders for the attributes, wrapped in '%'. For example: "%PatientID-%Modality%StudyInstanceUID".
-        downloadDir (str): The base directory where the files will be downloaded.
-
-        Returns:
-        str: An SQL CONCAT function string that concatenates the downloadDir with the values of the attributes specified in the dirTemplate, with literals '-' and '/' as specified in the template string.
-
-        Raises:
-        ValueError: If an attribute in the dirTemplate string is not in the list of valid attributes.
-
-        Example:
-        >>> _generate_sql_concat_for_building_directory("%PatientID-%Modality%StudyInstanceUID", 'data')
-        "CONCAT('data', '/', PatientID, '-', Modality, StudyInstanceUID)"
-        """
         valid_attributes = [
             "PatientID",
             "collection_id",
@@ -674,6 +657,11 @@ class IDCClient:
             "StudyInstanceUID",
             "SeriesInstanceUID",
         ]
+        # Validate dirTemplate for any invalid characters
+        if re.search(r"[^\w%\-\/]", dirTemplate):
+            error = f"Invalid character in template: {dirTemplate}"
+            raise ValueError(error)
+
         # Split the template into parts by '%'
         parts = dirTemplate.split("%")
         # Remove empty strings from the list
@@ -687,19 +675,19 @@ class IDCClient:
                     # Split the part by 'collection_id' and handle the suffix
                     split_parts = re.split(r"(collection_id)", part)
                     split_parts = [
-                        f"'{item}'" if item in (".", ",", "_", "-", "/") else item
+                        f"'{item}'" if item in ("_", "-", "/") else item
                         for item in split_parts
                     ]
                     new_parts.extend(split_parts)
                 else:
-                    # If the part is not a valid attribute, split it by '.', ',', '_', '-', and '/'
-                    split_parts = re.split(r"(\.|\,|\_|\-|\/)", part)
+                    # If the part is not a valid attribute, split it by '_', '-', and '/'
+                    split_parts = re.split(r"(\_|\-|\/)", part)
                     # If the part is still not a valid attribute, check for underscores
                     if all(sub_part in valid_attributes for sub_part in split_parts):
                         new_parts.extend(split_parts)
                     else:
                         split_parts = [
-                            f"'{item}'" if item in (".", ",", "_", "-", "/") else item
+                            f"'{item}'" if item in ("_", "-", "/") else item
                             for item in split_parts
                         ]
                         new_parts.extend(split_parts)
