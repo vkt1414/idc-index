@@ -646,7 +646,17 @@ class IDCClient:
 
             merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
             print("Parsing the manifest is finished. Download will begin soon")
-        return total_size, endpoint_to_use, Path(temp_manifest_file.name)
+
+        if dirTemplate is not None:
+            list_of_directories = merged_df.path.to_list()
+        else:
+            list_of_directories = [downloadDir]
+        return (
+            total_size,
+            endpoint_to_use,
+            Path(temp_manifest_file.name),
+            list_of_directories,
+        )
 
     @staticmethod
     def _generate_sql_concat_for_building_directory(dirTemplate, downloadDir):
@@ -707,6 +717,7 @@ class IDCClient:
         downloadDir: str,
         process: subprocess.Popen,
         show_progress_bar: bool = True,
+        list_of_directories=None,
     ):
         logger.info("Inputs received for tracking download:")
         logger.info(f"size_MB: {size_MB}")
@@ -715,11 +726,15 @@ class IDCClient:
 
         if show_progress_bar:
             total_size_bytes = size_MB * 10**6  # Convert MB to bytes
-
+            # temporary place holder. Accurate size is calculated in the next step
+            initial_size_bytes = 0
             # Calculate the initial size of the directory
-            initial_size_bytes = sum(
-                f.stat().st_size for f in Path(downloadDir).iterdir() if f.is_file()
-            )
+            for directory in list_of_directories:
+                path = Path(directory)
+                if path.exists() and path.is_dir():
+                    initial_size_bytes += sum(
+                        f.stat().st_size for f in path.iterdir() if f.is_file()
+                    )
 
             logger.info("Initial size of the directory: %s bytes", initial_size_bytes)
             logger.info(
@@ -735,14 +750,14 @@ class IDCClient:
             )
 
             while True:
-                downloaded_bytes = (
-                    sum(
-                        f.stat().st_size
-                        for f in Path(downloadDir).iterdir()
-                        if f.is_file()
-                    )
-                    - initial_size_bytes
-                )
+                downloaded_bytes = 0
+                for directory in list_of_directories:
+                    path = Path(directory)
+                    if path.exists() and path.is_dir():
+                        downloaded_bytes += sum(
+                            f.stat().st_size for f in path.iterdir() if f.is_file()
+                        )
+                downloaded_bytes -= initial_size_bytes
                 pbar.n = min(
                     downloaded_bytes, total_size_bytes
                 )  # Prevent the progress bar from exceeding 100%
@@ -848,14 +863,15 @@ class IDCClient:
                 synced_df["s5cmd_cmd"] = (
                     "sync " + synced_df["s3_url"] + " " + synced_df["path"]
                 )
+                list_of_directories = synced_df.path.to_list()
             else:
                 synced_df["s5cmd_cmd"] = (
                     "sync " + synced_df["s3_url"] + " " + downloadDir
                 )
-
+                list_of_directories = [downloadDir]
             synced_df["s5cmd_cmd"].to_csv(synced_manifest, header=False, index=False)
             logger.info("Parsing the s5cmd sync dry run output finished")
-        return Path(synced_manifest.name), sync_size_rounded
+        return Path(synced_manifest.name), sync_size_rounded, list_of_directories
 
     def _s5cmd_run(
         self,
@@ -867,6 +883,7 @@ class IDCClient:
         show_progress_bar,
         use_s5cmd_sync_dry_run,
         dirTemplate,
+        list_of_directories,
     ):
         """
         Executes the s5cmd command to sync files from a given endpoint to a local directory.
@@ -945,6 +962,7 @@ evaluate what to download and corresponding size with only series level precisio
                 (
                     synced_manifest,
                     sync_size,
+                    list_of_directories,
                 ) = self._parse_s5cmd_sync_output_and_generate_synced_manifest(
                     stdout=process.stdout,
                     downloadDir=downloadDir,
@@ -1014,7 +1032,11 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
                 cmd, stdout=stdout, stderr=stderr, universal_newlines=True
             ) as process:
                 self._track_download_progress(
-                    total_size, downloadDir, process, show_progress_bar
+                    total_size,
+                    downloadDir,
+                    process,
+                    show_progress_bar,
+                    list_of_directories,
                 )
 
     @staticmethod
@@ -1066,6 +1088,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             total_size,
             endpoint_to_use,
             temp_manifest_file,
+            list_of_directories,
         ) = self._validate_update_manifest_and_get_download_size(
             manifestFile,
             downloadDir,
@@ -1087,6 +1110,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
             dirTemplate=dirTemplate,
+            list_of_directories=list_of_directories,
         )
 
     def download_from_selection(
@@ -1220,6 +1244,10 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
                     "cp " + result_df["series_aws_url"] + " " + downloadDir
                 )
             result_df["s5cmd_cmd"].to_csv(manifest_file, header=False, index=False)
+            if dirTemplate is not None:
+                list_of_directories = result_df.path.to_list()
+            else:
+                list_of_directories = [downloadDir]
         logger.info(
             """
 Temporary download manifest is generated and is passed to self._s5cmd_run
@@ -1234,6 +1262,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
             dirTemplate=dirTemplate,
+            list_of_directories=list_of_directories,
         )
 
     def download_dicom_series(
