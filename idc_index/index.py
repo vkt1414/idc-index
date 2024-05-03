@@ -660,7 +660,7 @@ class IDCClient:
                     new_parts.extend(split_parts)
             else:
                 new_parts.append(part)
-        parts = new_parts
+        parts = list(filter(None, new_parts))
         # Add quotes around downloadDir and add ',' and '/'
         parts = [f"'{downloadDir}'", "'/'", *parts]
         # Join the parts with commas to create the argument list for CONCAT
