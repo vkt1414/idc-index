@@ -1105,13 +1105,20 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
                 dirTemplate="%PatientID-%Modality%StudyInstanceUID",
             )
             sql = f"""
-                select
-                series_aws_url,
-                {hierarchy} as path
-                from
-                result_df
-                join
-                index using (seriesInstanceUID)
+                WITH temp as
+                    (
+                        SELECT
+                            seriesInstanceUID
+                        FROM
+                            result_df
+                    )
+                SELECT
+                    series_aws_url,
+                    {hierarchy} as path
+                FROM
+                    temp
+                JOIN
+                    index using (seriesInstanceUID)
                 """
             result_df = self.sql_query(sql)
             # Download the files
