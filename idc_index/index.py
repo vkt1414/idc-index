@@ -1102,7 +1102,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             print("Total size: " + self._format_size(total_size))
             hierarchy = self._generate_sql_concat_for_building_directory(
                 downloadDir=downloadDir,
-                dirTemplate="%PatientID-%Modality%StudyInstanceUID",
+                dirTemplate=dirTemplate,
             )
             sql = f"""
                 WITH temp as
