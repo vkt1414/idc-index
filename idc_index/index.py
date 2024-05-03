@@ -672,7 +672,6 @@ class IDCClient:
         >>> _generate_sql_concat_for_building_directory("%PatientID-%Modality%StudyInstanceUID", 'data')
         "CONCAT('data', '/', PatientID, '-', Modality, StudyInstanceUID)"
         """
-
         valid_attributes = [
             "PatientID",
             "collection_id",
@@ -699,7 +698,7 @@ class IDCClient:
                     new_parts.extend(split_parts)
                 else:
                     # If the part is not a valid attribute, split it by '.', ',', '_', '-', and '/'
-                    split_parts = re.split(r"(\.|\,|\_|\-|\\/)", part)
+                    split_parts = re.split(r"(\.|\,|\_|\-|\/)", part)
                     # If the part is still not a valid attribute, check for underscores
                     if all(sub_part in valid_attributes for sub_part in split_parts):
                         new_parts.extend(split_parts)
