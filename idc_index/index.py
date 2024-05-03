@@ -672,6 +672,7 @@ class IDCClient:
         >>> _generate_sql_concat_for_building_directory("%PatientID-%Modality%StudyInstanceUID", 'data')
         "CONCAT('data', '/', PatientID, '-', Modality, StudyInstanceUID)"
         """
+
         valid_attributes = [
             "PatientID",
             "collection_id",
@@ -687,17 +688,27 @@ class IDCClient:
         # Validate the attributes
         for part in parts:
             if part not in valid_attributes:
-                # If the part is not a valid attribute, split it by special characters except '_'
-                split_parts = re.split(r"(?<=[^\w\s])|(?=[^\w\s])", part)
-                # If the part is still not a valid attribute, check for underscores
-                if all(sub_part in valid_attributes for sub_part in split_parts):
-                    new_parts.extend(split_parts)
-                else:
+                # Special case for 'collection_id'
+                if "collection_id" in part:
+                    # Split the part by 'collection_id' and handle the suffix
+                    split_parts = re.split(r"(collection_id)", part)
                     split_parts = [
-                        f"'{item}'" if item in ("-", "/", ".", ",") else item
+                        f"'{item}'" if item in (".", ",", "_", "-", "/") else item
                         for item in split_parts
                     ]
                     new_parts.extend(split_parts)
+                else:
+                    # If the part is not a valid attribute, split it by '.', ',', '_', '-', and '/'
+                    split_parts = re.split(r"(\.|\,|\_|\-|\\/)", part)
+                    # If the part is still not a valid attribute, check for underscores
+                    if all(sub_part in valid_attributes for sub_part in split_parts):
+                        new_parts.extend(split_parts)
+                    else:
+                        split_parts = [
+                            f"'{item}'" if item in (".", ",", "_", "-", "/") else item
+                            for item in split_parts
+                        ]
+                        new_parts.extend(split_parts)
             else:
                 new_parts.append(part)
         parts = list(filter(None, new_parts))
