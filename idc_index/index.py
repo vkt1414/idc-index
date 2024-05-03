@@ -477,6 +477,7 @@ class IDCClient:
         validate_manifest,
         show_progress_bar,
         use_s5cmd_sync_dry_run,
+        dirTemplate,
     ) -> tuple[float, str, Path]:
         """
         Validates the manifest file by checking the URLs in the manifest
@@ -487,6 +488,8 @@ class IDCClient:
             validate_manifest (bool, optional): If True, validates the manifest for any errors. Defaults to True.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
+
         Returns:
             total_size (float): The total size of all series in the manifest file.
             endpoint_to_use (str): The endpoint URL to use (either AWS or GCP).
@@ -597,6 +600,29 @@ class IDCClient:
         total_size = merged_df["series_size_MB"].sum()
         total_size = round(total_size, 2)
 
+        hierarchy = self._generate_sql_concat_for_building_directory(
+            dirTemplate=dirTemplate, downloadDir=downloadDir
+        )
+
+        if dirTemplate is not None:
+            sql = f"""
+                WITH temp as
+                    (
+                        SELECT
+                            seriesInstanceUID,
+                            s3_url
+                        FROM
+                            merged_df
+                    )
+                SELECT
+                    s3_url,
+                    {hierarchy} as path
+                FROM
+                    temp
+                JOIN
+                    index using (seriesInstanceUID)
+                """
+            validated_df = self.sql_query(sql)
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_manifest_file:
             if (
@@ -604,11 +630,23 @@ class IDCClient:
                 and use_s5cmd_sync_dry_run
                 and len(os.listdir(downloadDir)) != 0
             ):
-                merged_df["s5cmd_cmd"] = (
-                    "sync " + merged_df["s3_url"] + " " + downloadDir
+                if dirTemplate is not None:
+                    validated_df["s5cmd_cmd"] = (
+                        "sync " + validated_df["s3_url"] + " " + validated_df["path"]
+                    )
+                else:
+                    validated_df["s5cmd_cmd"] = (
+                        "sync " + validated_df["s3_url"] + " " + downloadDir
+                    )
+            elif dirTemplate is not None:
+                validated_df["s5cmd_cmd"] = (
+                    "cp " + validated_df["s3_url"] + " " + validated_df["path"]
                 )
             else:
-                merged_df["s5cmd_cmd"] = "cp " + merged_df["s3_url"] + " " + downloadDir
+                validated_df["s5cmd_cmd"] = (
+                    "cp " + validated_df["s3_url"] + " " + downloadDir
+                )
+
             merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
             print("Parsing the manifest is finished. Download will begin soon")
         return total_size, endpoint_to_use, Path(temp_manifest_file.name)
@@ -737,7 +775,7 @@ class IDCClient:
         logger.info("Successfully downloaded files to %s", str(downloadDir))
 
     def _parse_s5cmd_sync_output_and_generate_synced_manifest(
-        self, stdout, downloadDir
+        self, stdout, downloadDir, dirTemplate
     ) -> Path:
         """
         Parse the output of s5cmd sync --dry-run to extract distinct folders and generate a synced manifest.
@@ -745,6 +783,7 @@ class IDCClient:
         Args:
             output (str): The output of s5cmd sync --dry-run command.
             downloadDir (str): The directory to download the files to.
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Returns:
             Path: The path to the generated synced manifest file.
@@ -781,16 +820,45 @@ class IDCClient:
             sync_temp
             left join index_temp on index_temp.index_crdc_series_uuid = sync_temp.sync_crdc_instance_uuid
         """
-        merged_df = duckdb.query(sql).df()
-        sync_size = merged_df["series_size_MB"].sum()
+        synced_df = duckdb.query(sql).df()
+        sync_size = synced_df["series_size_MB"].sum()
         sync_size_rounded = round(sync_size, 2)
 
         logger.info(f"sync_size_rounded: {sync_size_rounded}")
 
+        hierarchy = self._generate_sql_concat_for_building_directory(
+            dirTemplate=dirTemplate, downloadDir=downloadDir
+        )
+        if dirTemplate is not None:
+            sql = f"""
+                WITH temp as
+                    (
+                        SELECT
+                            seriesInstanceUID
+                        FROM
+                            merged_df
+                    )
+                SELECT
+                    series_aws_url,
+                    {hierarchy} as path
+                FROM
+                    temp
+                JOIN
+                    index using (seriesInstanceUID)
+                """
+            synced_df = self.sql_query(sql)
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as synced_manifest:
-            merged_df["s5cmd_cmd"] = "sync " + merged_df["s3_url"] + " " + downloadDir
-            merged_df["s5cmd_cmd"].to_csv(synced_manifest, header=False, index=False)
+            if dirTemplate is not None:
+                synced_df["s5cmd_cmd"] = (
+                    "sync " + synced_df["s3_url"] + " " + synced_df["path"]
+                )
+            else:
+                synced_df["s5cmd_cmd"] = (
+                    "sync " + synced_df["s3_url"] + " " + downloadDir
+                )
+
+            synced_df["s5cmd_cmd"].to_csv(synced_manifest, header=False, index=False)
             logger.info("Parsing the s5cmd sync dry run output finished")
         return Path(synced_manifest.name), sync_size_rounded
 
@@ -803,6 +871,7 @@ class IDCClient:
         quiet,
         show_progress_bar,
         use_s5cmd_sync_dry_run,
+        dirTemplate,
     ):
         """
         Executes the s5cmd command to sync files from a given endpoint to a local directory.
@@ -820,6 +889,7 @@ class IDCClient:
             quiet (bool, optional): If True, suppresses the stdout and stderr of the s5cmd command.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Raises:
             subprocess.CalledProcessError: If the s5cmd command fails.
@@ -835,6 +905,7 @@ class IDCClient:
         logger.info(f"quiet: {quiet}")
         logger.info(f"show_progress_bar: {show_progress_bar}")
         logger.info(f"use_s5cmd_sync_dry_run: {use_s5cmd_sync_dry_run}")
+        logger.info(f"dirTemplate: {dirTemplate}")
 
         if quiet:
             stdout = subprocess.DEVNULL
@@ -880,7 +951,9 @@ evaluate what to download and corresponding size with only series level precisio
                     synced_manifest,
                     sync_size,
                 ) = self._parse_s5cmd_sync_output_and_generate_synced_manifest(
-                    stdout=process.stdout, downloadDir=downloadDir
+                    stdout=process.stdout,
+                    downloadDir=downloadDir,
+                    dirTemplate=dirTemplate,
                 )
                 logger.info(f"sync_size (MB): {sync_size}")
 
@@ -968,6 +1041,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
         validate_manifest: bool = True,
         show_progress_bar: bool = True,
         use_s5cmd_sync_dry_run: bool = False,
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ) -> None:
         """
         Download the manifest file. In a series of steps, the manifest file
@@ -982,6 +1056,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             validate_manifest (bool, optional): If True, validates the manifest for any errors. Defaults to True.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Raises:
             ValueError: If the download directory does not exist.
@@ -1002,6 +1077,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             validate_manifest,
             show_progress_bar,
             use_s5cmd_sync_dry_run,
+            dirTemplate,
         )
 
         total_size_rounded = round(total_size, 2)
@@ -1015,6 +1091,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+            dirTemplate=dirTemplate,
         )
 
     def download_from_selection(
@@ -1104,6 +1181,7 @@ NOT using s5cmd sync dry run as the destination folder IS empty or sync dry or p
                 downloadDir=downloadDir,
                 dirTemplate=dirTemplate,
             )
+        if dirTemplate is not None:
             sql = f"""
                 WITH temp as
                     (
@@ -1162,6 +1240,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
                 quiet=quiet,
                 show_progress_bar=show_progress_bar,
                 use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+                dirTemplate=dirTemplate,
             )
 
     def download_dicom_series(
@@ -1172,6 +1251,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync_dry_run=False,
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ) -> None:
         """
         Download the files corresponding to the seriesInstanceUID to the specified directory.
@@ -1183,6 +1263,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet (bool, optional): If True, suppresses the output of the subprocess. Defaults to True.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Returns: None
 
@@ -1197,6 +1278,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+            dirTemplate=dirTemplate,
         )
 
     def download_dicom_studies(
@@ -1207,6 +1289,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync_dry_run=False,
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ) -> None:
         """
         Download the files corresponding to the studyInstanceUID to the specified directory.
@@ -1218,6 +1301,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet (bool, optional): If True, suppresses the output of the subprocess. Defaults to True.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Returns: None
 
@@ -1232,6 +1316,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+            dirTemplate=dirTemplate,
         )
 
     def download_dicom_patients(
@@ -1242,6 +1327,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync_dry_run=False,
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ) -> None:
         """
         Download the files corresponding to the studyInstanceUID to the specified directory.
@@ -1253,6 +1339,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet (bool, optional): If True, suppresses the output of the subprocess. Defaults to True.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Returns: None
 
@@ -1267,6 +1354,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+            dirTemplate=dirTemplate,
         )
 
     def download_collection(
@@ -1277,6 +1365,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
         quiet=True,
         show_progress_bar=True,
         use_s5cmd_sync_dry_run=False,
+        dirTemplate="%collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID",
     ) -> None:
         """
         Download the files corresponding to the studyInstanceUID to the specified directory.
@@ -1288,6 +1377,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet (bool, optional): If True, suppresses the output of the subprocess. Defaults to True.
             show_progress_bar (bool, optional): If True, tracks the progress of download
             use_s5cmd_sync_dry_run (bool, optional): If True, improves the accuracy of progress bar in unusual circumstances
+            dirTemplate (str): A template string for the directory path. Defaults to %collection_id/%PatientID/%Modality/%StudyInstanceUID/%SeriesInstanceUID. It can contain attributes (PatientID, collection_id, Modality, StudyInstanceUID, SeriesInstanceUID) wrapped in '%'. Special characters can be used as connectors: '-' (hyphen), '/' (slash for subdirectories), '_' (underscore), '.' (dot), and ',' (comma). Can be disabled by None.
 
         Returns: None
 
@@ -1302,6 +1392,7 @@ Temporary download manifest is generated and is passed to self._s5cmd_run
             quiet=quiet,
             show_progress_bar=show_progress_bar,
             use_s5cmd_sync_dry_run=use_s5cmd_sync_dry_run,
+            dirTemplate=dirTemplate,
         )
 
     def sql_query(self, sql_query):
