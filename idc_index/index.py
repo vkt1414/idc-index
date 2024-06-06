@@ -11,7 +11,6 @@ import time
 from importlib.metadata import distribution
 from pathlib import Path
 
-import csv
 import duckdb
 import idc_index_data
 import pandas as pd
