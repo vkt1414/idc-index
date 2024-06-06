@@ -690,20 +690,31 @@ class IDCClient:
             if use_s5cmd_sync and len(os.listdir(downloadDir)) != 0:
                 if dirTemplate is not None:
                     merged_df["s5cmd_cmd"] = (
-                        "sync " + merged_df["s3_url"] + " " + merged_df["path"]
+                        "sync "
+                        + merged_df["s3_url"]
+                        + " "
+                        + '"'
+                        + merged_df["path"]
+                        + '"'
                     )
                 else:
                     merged_df["s5cmd_cmd"] = (
-                        "sync " + merged_df["s3_url"] + " " + downloadDir
+                        "sync " + merged_df["s3_url"] + " " + '"' + downloadDir + '"'
                     )
             elif dirTemplate is not None:
                 merged_df["s5cmd_cmd"] = (
-                    "cp " + merged_df["s3_url"] + " " + merged_df["path"]
+                    "cp " + merged_df["s3_url"] + " " + '"' + merged_df["path"] + '"'
                 )
             else:
-                merged_df["s5cmd_cmd"] = "cp " + merged_df["s3_url"] + " " + downloadDir
+                merged_df["s5cmd_cmd"] = (
+                    "cp " + merged_df["s3_url"] + " " + '"' + downloadDir + '"'
+                )
 
-            merged_df["s5cmd_cmd"].to_csv(temp_manifest_file, header=False, index=False)
+            # Combine all commands into a single string with newline separators
+            commands = "\n".join(merged_df["s5cmd_cmd"])
+
+            temp_manifest_file.write(commands)
+
             logger.info("Parsing the manifest is finished. Download will begin soon")
 
         if dirTemplate is not None:
@@ -918,15 +929,19 @@ class IDCClient:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as synced_manifest:
             if dirTemplate is not None:
                 synced_df["s5cmd_cmd"] = (
-                    "sync " + synced_df["s3_url"] + " " + synced_df["path"]
+                    "sync " + synced_df["s3_url"] + " " + '"' + synced_df["path"] + '"'
                 )
                 list_of_directories = synced_df.path.to_list()
             else:
                 synced_df["s5cmd_cmd"] = (
-                    "sync " + synced_df["s3_url"] + " " + downloadDir
+                    "sync " + synced_df["s3_url"] + " " + '"' + downloadDir + '"'
                 )
                 list_of_directories = [downloadDir]
-            synced_df["s5cmd_cmd"].to_csv(synced_manifest, header=False, index=False)
+                # Combine all commands into a single string with newline separators
+            commands = "\n".join(synced_df["s5cmd_cmd"])
+
+            synced_manifest.write(commands)
+
             logger.info("Parsing the s5cmd sync dry run output finished")
         return Path(synced_manifest.name), sync_size_rounded, list_of_directories
 
@@ -1387,21 +1402,30 @@ Destination folder is not empty and sync size is less than total size. Displayin
             if use_s5cmd_sync and len(os.listdir(downloadDir)) != 0:
                 if dirTemplate is not None:
                     result_df["s5cmd_cmd"] = (
-                        "sync " + result_df["series_aws_url"] + " " + result_df["path"]
+                        "sync "
+                        + result_df["series_aws_url"]
+                        + ' "'
+                        + result_df["path"]
+                        + '"'
                     )
                 else:
                     result_df["s5cmd_cmd"] = (
-                        "sync " + result_df["series_aws_url"] + " " + downloadDir
+                        "sync " + result_df["series_aws_url"] + ' "' + downloadDir + '"'
                     )
             elif dirTemplate is not None:
                 result_df["s5cmd_cmd"] = (
-                    "cp " + result_df["series_aws_url"] + " " + result_df["path"]
+                    "cp " + result_df["series_aws_url"] + ' "' + result_df["path"] + '"'
                 )
             else:
                 result_df["s5cmd_cmd"] = (
-                    "cp " + result_df["series_aws_url"] + " " + downloadDir
+                    "cp " + result_df["series_aws_url"] + ' "' + downloadDir + '"'
                 )
-            result_df["s5cmd_cmd"].to_csv(manifest_file, header=False, index=False)
+
+            # Combine all commands into a single string with newline separators
+            commands = "\n".join(result_df["s5cmd_cmd"])
+
+            manifest_file.write(commands)
+
             if dirTemplate is not None:
                 list_of_directories = result_df.path.to_list()
             else:
