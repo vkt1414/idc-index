@@ -636,6 +636,71 @@ class IDCClient:
             )
             logger.error("\n" + "\n".join(missing_manifest_cp_cmds.tolist()))
 
+            logger.debug(
+                "Checking if the requested data is available in other idc versions "
+            )
+            missing_series_sql = """
+            PRAGMA disable_progress_bar;
+            WITH
+            combined_index AS
+            (SELECT
+                *
+            FROM
+                index_df_copy
+            union by name
+            SELECT
+                *
+            FROM
+                'https://github.com/vkt1414/idc-index/releases/download/v1111/prior-idc-index.parquet' pvip
+
+            ),
+            index_temp AS (
+            SELECT
+                seriesInstanceUID,
+                series_aws_url,
+                series_size_MB,
+                REGEXP_EXTRACT(series_aws_url, '(?:.*?\\/){3}([^\\/?#]+)', 1) index_crdc_series_uuid
+            FROM
+                combined_index),
+            manifest_temp AS (
+            SELECT
+                manifest_cp_cmd,
+                REGEXP_EXTRACT(manifest_cp_cmd, '(?:.*?\\/){3}([^\\/?#]+)', 1) AS manifest_crdc_series_uuid,
+                REGEXP_REPLACE(regexp_replace(manifest_cp_cmd, 'cp ', ''), '\\s[^\\s]*$', '') AS s3_url,
+            FROM
+                manifest_df )
+            SELECT
+                seriesInstanceuid,
+                s3_url,
+                series_size_MB,
+                index_crdc_series_uuid is not NULL as crdc_series_uuid_match,
+                s3_url==series_aws_url AS s3_url_match,
+                manifest_temp.manifest_cp_cmd,
+            CASE
+                WHEN s3_url==series_aws_url THEN 'aws'
+            ELSE
+                'unknown'
+            END
+                AS endpoint
+            FROM
+                manifest_temp
+            LEFT JOIN
+                index_temp
+            ON
+                index_temp.index_crdc_series_uuid = manifest_temp.manifest_crdc_series_uuid
+            """
+            merged_df = duckdb.query(missing_series_sql).df()
+            if not all(merged_df["crdc_series_uuid_match"]):
+                missing_manifest_cp_cmds = merged_df.loc[
+                    ~merged_df["crdc_series_uuid_match"], "manifest_cp_cmd"
+                ]
+                logger.error(
+                    "The following manifest copy commands are not recognized as referencing any associated series in any release of IDC.\n"
+                    "This means either these commands are invalid. Please submit an issue on https://github.com/ImagingDataCommons/idc-index/issues \n"
+                    f"The corresponding files could not be downloaded.\n"
+                )
+                logger.error("\n" + "\n".join(missing_manifest_cp_cmds.tolist()))
+
         if validate_manifest:
             # Check if there is more than one endpoint
             if len(merged_df["endpoint"].unique()) > 1:
