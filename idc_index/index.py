@@ -697,7 +697,7 @@ class IDCClient:
                 logger.error(
                     "The following manifest copy commands are not recognized as referencing any associated series in any release of IDC.\n"
                     "This means either these commands are invalid. Please submit an issue on https://github.com/ImagingDataCommons/idc-index/issues \n"
-                    f"The corresponding files could not be downloaded.\n"
+                    "The corresponding files could not be downloaded.\n"
                 )
                 logger.error("\n" + "\n".join(missing_manifest_cp_cmds.tolist()))
 
