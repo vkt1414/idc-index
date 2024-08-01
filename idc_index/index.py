@@ -674,10 +674,10 @@ class IDCClient:
                 s3_url,
                 series_size_MB,
                 index_crdc_series_uuid is not NULL as crdc_series_uuid_match,
-                s3_url==series_aws_url AS s3_url_match,
+                TRIM(s3_url) = TRIM(series_aws_url) AS s3_url_match,
                 manifest_temp.manifest_cp_cmd,
             CASE
-                WHEN s3_url==series_aws_url THEN 'aws'
+                WHEN TRIM(s3_url) = TRIM(series_aws_url) THEN 'aws'
             ELSE
                 'unknown'
             END
