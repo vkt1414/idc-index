@@ -574,6 +574,11 @@ class IDCClient:
         # create a copy of the index
         index_df_copy = self.index
 
+        # use default hierarchy
+        hierarchy = self._generate_sql_concat_for_building_directory(
+            dirTemplate=dirTemplate, downloadDir=downloadDir
+        )
+
         # Extract s3 url and crdc_series_uuid from the manifest copy commands
         # Next, extract crdc_series_uuid from aws_series_url in the index and
         # try to verify if every series in the manifest is present in the index
@@ -581,7 +586,7 @@ class IDCClient:
         # TODO: need to remove the assumption that manifest commands will have 'cp'
         #  and need to parse S3 URL directly
         # ruff: noqa
-        sql = """
+        sql = f"""
             PRAGMA disable_progress_bar;
             WITH
             index_temp AS (
@@ -589,6 +594,7 @@ class IDCClient:
                 seriesInstanceUID,
                 series_aws_url,
                 series_size_MB,
+                {hierarchy} AS path,
                 REGEXP_EXTRACT(series_aws_url, '(?:.*?\\/){3}([^\\/?#]+)', 1) index_crdc_series_uuid
             FROM
                 index_df_copy),
@@ -602,6 +608,7 @@ class IDCClient:
             SELECT
                 seriesInstanceuid,
                 s3_url,
+                path,
                 series_size_MB,
                 index_crdc_series_uuid is not NULL as crdc_series_uuid_match,
                 s3_url==series_aws_url AS s3_url_match,
@@ -639,17 +646,19 @@ class IDCClient:
             logger.debug(
                 "Checking if the requested data is available in other idc versions "
             )
-            missing_series_sql = """
+            missing_series_sql = f"""
             PRAGMA disable_progress_bar;
             WITH
             combined_index AS
             (SELECT
-                *
+                *,
+                {hierarchy} AS path,
             FROM
                 index_df_copy
             union by name
             SELECT
-                *
+                *,
+                 {hierarchy} AS path,
             FROM
                 'https://github.com/vkt1414/idc-index/releases/download/v1111/prior-idc-index.parquet' pvip
 
@@ -659,6 +668,7 @@ class IDCClient:
                 seriesInstanceUID,
                 series_aws_url,
                 series_size_MB,
+                path,
                 REGEXP_EXTRACT(series_aws_url, '(?:.*?\\/){3}([^\\/?#]+)', 1) index_crdc_series_uuid
             FROM
                 combined_index),
@@ -672,6 +682,7 @@ class IDCClient:
             SELECT
                 seriesInstanceuid,
                 s3_url,
+                path,
                 series_size_MB,
                 index_crdc_series_uuid is not NULL as crdc_series_uuid_match,
                 TRIM(s3_url) = TRIM(series_aws_url) AS s3_url_match,
@@ -750,29 +761,29 @@ class IDCClient:
         total_size = merged_df["series_size_MB"].sum()
         total_size = round(total_size, 2)
 
-        if dirTemplate is not None:
-            hierarchy = self._generate_sql_concat_for_building_directory(
-                dirTemplate=dirTemplate, downloadDir=downloadDir
-            )
-            sql = f"""
-                WITH temp as
-                    (
-                        SELECT
-                            seriesInstanceUID,
-                            s3_url
-                        FROM
-                            merged_df
-                    )
-                SELECT
-                    s3_url,
-                    {hierarchy} as path
-                FROM
-                    temp
-                JOIN
-                    index using (seriesInstanceUID)
-                """
-            logger.debug(f"About to run this query:\n{sql}")
-            merged_df = self.sql_query(sql)
+        # if dirTemplate is not None:
+        #     hierarchy = self._generate_sql_concat_for_building_directory(
+        #         dirTemplate=dirTemplate, downloadDir=downloadDir
+        #     )
+        #     sql = f"""
+        #         WITH temp as
+        #             (
+        #                 SELECT
+        #                     seriesInstanceUID,
+        #                     s3_url
+        #                 FROM
+        #                     merged_df
+        #             )
+        #         SELECT
+        #             s3_url,
+        #             {hierarchy} as path
+        #         FROM
+        #             temp
+        #         JOIN
+        #             index using (seriesInstanceUID)
+        #         """
+        #     logger.debug(f"About to run this query:\n{sql}")
+        #     merged_df = self.sql_query(sql)
         # Write a temporary manifest file
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_manifest_file:
             if use_s5cmd_sync and len(os.listdir(downloadDir)) != 0:
