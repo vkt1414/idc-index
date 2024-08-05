@@ -580,7 +580,7 @@ class IDCClient:
                 dirTemplate=dirTemplate, downloadDir=downloadDir
             )
         else:
-            hierarchy = None
+            hierarchy = "NULL" if hierarchy is None else hierarchy
 
         # Extract s3 url and crdc_series_uuid from the manifest copy commands
         # Next, extract crdc_series_uuid from aws_series_url in the index and
