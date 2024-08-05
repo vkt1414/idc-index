@@ -575,9 +575,12 @@ class IDCClient:
         index_df_copy = self.index
 
         # use default hierarchy
-        hierarchy = self._generate_sql_concat_for_building_directory(
-            dirTemplate=dirTemplate, downloadDir=downloadDir
-        )
+        if dirTemplate is not None:
+            hierarchy = self._generate_sql_concat_for_building_directory(
+                dirTemplate=dirTemplate, downloadDir=downloadDir
+            )
+        else:
+            hierarchy = downloadDir
 
         # Extract s3 url and crdc_series_uuid from the manifest copy commands
         # Next, extract crdc_series_uuid from aws_series_url in the index and
